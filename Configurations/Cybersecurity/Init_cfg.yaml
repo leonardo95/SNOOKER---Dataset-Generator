@@ -1,0 +1,508 @@
+generation_parameters:
+  train_ticket: 50000
+  test_ticket: 100
+  ticket_growth_type: maintain
+  ticket_growth_rate: 0.01
+  test_timerange: 5760
+  future_ticket: 0
+  families_number: 12
+  minsubfamilies_number: 1
+  maxsubfamilies_number: 11
+  techniques_number: 7
+  minsubtechniques_number: 3
+  maxsubtechniques_number: 4
+  use_default_family: true
+  seed: 1
+  start_date: 01-04-2020 17:01:00
+  end_date: 01-04-2025 11:43:00
+  analyst_subfamily_action_probability: 0.9
+  analyst_same_action_probability: 0.9
+  min_learning_counter: 10
+  max_learning_counter: 20
+  outlier_rate: 10
+  outlier_cost: 0.1
+  escalate_rate_percentage: 0.5
+  family_rate_percentage: 0
+  subfamily_rate_percentage: 0
+  min_coordinated_attack: 5
+  max_coordinated_attack: 7
+  min_coordinated_attack_minutes: 59
+  max_coordinated_attack_minutes: 90
+  min_subtechnique_rate: 50
+  max_subtechnique_rate: 200
+  min_subtechnique_cost: 2
+  max_subtechnique_cost: 5
+  suspicious_subfamily: 0.4
+  clients_number: 2
+  actions_similarity: 3
+  generation_mode: standard
+  distribution_mode: normal
+  balanced_shifts: true
+  prioritize_lower_teams: true
+  reset_analysts_data: true
+  debug: false
+  logger_active: false
+  print_plots: false
+  time_equal_probabilities: true
+  week_equal_probabilities: true
+  max_priority_levels: 5
+teams_info_pool:
+  L1:
+  - Analyst_1
+  - Analyst_2
+  - Analyst_3
+  - Analyst_4
+  - Analyst_5
+  - Analyst_6
+  - Analyst_7
+  - Analyst_8
+  - Analyst_9
+  L2:
+  - Analyst_10
+  - Analyst_11
+  - Analyst_12
+  - Analyst_13
+  - Analyst_14
+  - Analyst_15
+
+analysts_info:
+  L1:
+    analysts:
+      Analyst_1:
+        shift: 0
+        growth: 1.49
+        refusal_rate: 0.15
+        active: true
+      Analyst_7:
+        shift: 2
+        growth: 1.59
+        refusal_rate: 0.24
+        active: true
+      Analyst_9:
+        shift: 1
+        growth: 1.04
+        refusal_rate: 0.71
+        active: true
+      Analyst_6:
+        shift: 0
+        growth: 1.17
+        refusal_rate: 0.79
+        active: true
+      Analyst_2:
+        shift: 2
+        growth: 1.25
+        refusal_rate: 0.4
+        active: true
+      Analyst_8:
+        shift: 1
+        growth: 1.73
+        refusal_rate: 0.57
+        active: true
+      Analyst_5:
+        shift: 0
+        growth: 1.54
+        refusal_rate: 0.46
+        active: true
+      Analyst_3:
+        shift: 2
+        growth: 1.86
+        refusal_rate: 0.46
+        active: true
+      Analyst_4:
+        shift: 1
+        growth: 1.79
+        refusal_rate: 0.53
+        active: true
+  L2:
+    analysts:
+      Analyst_15:
+        shift: 0
+        growth: 1.09
+        refusal_rate: 0.49
+        active: true
+      Analyst_12:
+        shift: 1
+        growth: 1.3
+        refusal_rate: 0.3
+        active: true
+      Analyst_11:
+        shift: 2
+        growth: 1.06
+        refusal_rate: 0.74
+        active: true
+      Analyst_13:
+        shift: 0
+        growth: 1.85
+        refusal_rate: 0.28
+        active: true
+      Analyst_14:
+        shift: 1
+        growth: 1.28
+        refusal_rate: 0.5
+        active: true
+      Analyst_10:
+        shift: 2
+        growth: 1.56
+        refusal_rate: 0.47
+        active: true
+teams_freq:
+  L1: 0.5
+  L2: 0.5
+suspicious_countries:
+  United States:
+    start: 00:00:00.0
+    end: 23:59:59.999999
+    dayoff: []
+  China:
+    start: 00:00:00.0
+    end: 23:59:59.999999
+    dayoff: []
+  Russia:
+    start: 00:00:00.0
+    end: 23:59:59.999999
+    dayoff: []
+  United Kingdom:
+    start: 00:00:00.0
+    end: 23:59:59.999999
+    dayoff: []
+  Japan:
+    start: 22:00:00.0
+    end: 07:00:00.999999
+    dayoff:
+    - Monday
+    - Tuesday
+    - Thursday
+  France:
+    start: 22:00:00.0
+    end: 07:00:00.999999
+    dayoff:
+    - Monday
+    - Tuesday
+    - Friday
+  Netherlands:
+    start: 22:00:00.0
+    end: 07:00:00.999999
+    dayoff:
+    - Monday
+    - Tuesday
+    - Thursday
+  Germany:
+    start: 22:00:00.0
+    end: 07:00:00.999999
+    dayoff:
+    - Monday
+    - Wednesday
+    - Thursday
+  Canada:
+    start: 22:00:00.0
+    end: 07:00:00.999999
+    dayoff:
+    - Monday
+    - Tuesday
+    - Thursday
+  Australia:
+    start: 00:00:00.0
+    end: 23:59:59.999999
+    dayoff:
+    - Monday
+    - Tuesday
+    - Thursday
+
+############# Time Data #############
+week_time:
+  0:
+    day: Monday
+    prob: 0.1
+  1:
+    day: Tuesday
+    prob: 0.1
+  2:
+    day: Wednesday
+    prob: 0.1
+  3:
+    day: Thursday
+    prob: 0.1
+  4:
+    day: Friday
+    prob: 0.1
+  5:
+    day: Saturday
+    prob: 0.25
+  6:
+    day: Sunday
+    prob: 0.25
+day_stages:
+  morning:
+    start: 05:00
+    end: 11:59
+  afternoon:
+    start: 12:00
+    end: 16:59
+  evening:
+    start: 17:00
+    end: 20:59
+  night:
+    start: 21:00
+    end: 04:59
+shifts:
+  0:
+    start: 00:00:00.00
+    end: 07:59:59.999999
+  1:
+    start: 08:00:00.00
+    end: 15:59:59.999999
+  2:
+    start: 16:00:00.00
+    end: 23:59:59.999999
+family_time_4h:
+  0:
+    start: 00:00:00.00
+    end: 03:59:59.999999
+    prob: 0.10
+  1:
+    start: 04:00:00.00
+    end: 07:59:59.999999
+    prob: 0.20
+  2:
+    start: 08:00:00.00
+    end: 11:59:59.999999
+    prob: 0.10
+  3:
+    start: 12:00:00.00
+    end: 15:59:59.999999
+    prob: 0.2
+  4:
+    start: 16:00:00.00
+    end: 19:59:59.999999
+    prob: 0.2
+  5:
+    start: 20:00:00.00
+    end: 23:59:59.999999
+    prob: 0.2
+families:
+  A:
+    subtypes: 1
+    time shift: 1
+    time dev: 3
+    week shift: 5
+    week loc: 2
+    week dev: 1
+    time loc: 19.31221087578001
+    priority: 1
+  B:
+    subtypes: 6
+    time shift: 2
+    time dev: 3
+    week shift: 1
+    week loc: 1
+    week dev: 1
+    time loc: 12.415307421034893
+    priority: 2
+  C:
+    subtypes: 8
+    time shift: 1
+    time dev: 3
+    week shift: 4
+    week loc: 4
+    week dev: 1
+    time loc: 19.31221087578001
+    priority: 3
+  D:
+    subtypes: 6
+    time shift: 1
+    time dev: 3
+    week shift: 5
+    week loc: 5
+    week dev: 1
+    time loc: 17.997103913917503
+    priority: 4
+  E:
+    subtypes: 6
+    time shift: 0
+    time dev: 3
+    week shift: 4
+    week loc: 4
+    week dev: 1
+    time loc: 0.5953141646896909
+    priority: 2
+  F:
+    subtypes: 4
+    time shift: 2
+    time dev: 3
+    week shift: 5
+    week loc: 5
+    week dev: 1
+    time loc: 8.211828826174697
+    priority: 2
+  G:
+    subtypes: 2
+    time shift: 2
+    time dev: 3
+    week shift: 2
+    week loc: 2
+    week dev: 1
+    time loc: 13.670305438967642
+    priority: 1
+  H:
+    subtypes: 3
+    time shift: 1
+    time dev: 3
+    week shift: 0
+    week loc: 0
+    week dev: 1
+    time loc: 5.1077344941726786
+    priority: 1
+  I:
+    subtypes: 8
+    time shift: 2
+    time dev: 3
+    week shift: 4
+    week loc: 4
+    week dev: 1
+    time loc: 9.420280013471066
+    priority: 4
+  J:
+    subtypes: 3
+    time shift: 0
+    time dev: 3
+    week shift: 1
+    week loc: 1
+    week dev: 1
+    time loc: 0.3946242736447312
+    priority: 1
+  K:
+    subtypes: 2
+    time shift: 2
+    time dev: 3
+    week shift: 2
+    week loc: 1
+    week dev: 1
+    time loc: 4.852774840150743
+    priority: 2
+  L:
+    subtypes: 1
+    time shift: 2
+    time dev: 3
+    week shift: 0
+    week loc: 0
+    week dev: 1
+    time loc: 8.124366633042923
+    priority: 2
+  M:
+    subtypes: 4
+    time shift: 2
+    time dev: 3
+    week shift: 4
+    week loc: 4
+    week dev: 1
+    time loc: 8.713128935705452
+    priority: 1
+  N:
+    subtypes: 2
+    time shift: 0
+    time dev: 3
+    week shift: 1
+    week loc: 1
+    week dev: 1
+    time loc: 3.8168150551002196
+    priority: 3
+  O:
+    subtypes: 2
+    time shift: 3
+    time dev: 3
+    week shift: 4
+    week loc: 4
+    week dev: 1
+    time loc: 14.92041035740151
+    priority: 3
+  P:
+    subtypes: 5
+    time shift: 4
+    time dev: 3
+    week shift: 3
+    week loc: 3
+    week dev: 1
+    time loc: 16.710404369666534
+    priority: 2
+  Q:
+    subtypes: 6
+    time shift: 1
+    time dev: 3
+    week shift: 3
+    week loc: 3
+    week dev: 1
+    time loc: 7.383935806161164
+    priority: 1
+  R:
+    subtypes: 7
+    time shift: 2
+    time dev: 3
+    week shift: 0
+    week loc: 0
+    week dev: 1
+    time loc: 10.125994258811753
+    priority: 1
+  S:
+    subtypes: 2
+    time shift: 3
+    time dev: 3
+    week shift: 1
+    week loc: 1
+    week dev: 1
+    time loc: 13.9991249603621
+    priority: 2
+  T:
+    subtypes: 8
+    time shift: 3
+    time dev: 3
+    week shift: 5
+    week loc: 5
+    week dev: 1
+    time loc: 14.26633465557214
+    priority: 2
+  U:
+    subtypes: 5
+    time shift: 4
+    time dev: 3
+    week shift: 0
+    week loc: 0
+    week dev: 1
+    time loc: 16.29183511756117
+    priority: 2
+  X:
+    subtypes: 3
+    time shift: 2
+    time dev: 3
+    week shift: 5
+    week loc: 4
+    week dev: 1
+    time loc: 1.211828826174697
+    ip: true
+    priority: 2
+  V:
+    subtypes: 1
+    time shift: 1
+    time dev: 3
+    week shift: 5
+    week loc: 2
+    week dev: 1
+    time loc: 19.31221087578001
+    priority: 1
+  Z:
+    subtypes: 6
+    time shift: 2
+    time dev: 3
+    week shift: 1
+    week loc: 1
+    week dev: 1
+    time loc: 12.415307421034893
+    priority: 1
+ips_pool:
+- IPv4Address
+- IPv6Address
+
+action_operations:
+- '='
+- +
+- '-'
+- '%'

@@ -1,0 +1,11 @@
+id;country;raised;raised_tsp;allocated;allocated_tsp;fixed;init_priority;priority;client;family;subfamily;team;analyst;action;duration;duration_outlier;status;escalate;replicated;_feature_0;_feature_1;_feature_2;_feature_3;_feature_4;_feature_5;destination_ip;destination_port;source_ip;source_port
+0;Grenada;2025-04-05 06:53:35+00:00;1743836015;2025-04-05 06:53:35+00:00;1743836015;---;4;4;Client_2;I;I_8;---;---;---;---;---;---;False;---;True;False;False;True;False;False;---;---;---;---
+1;Antigua and Barbuda;2025-04-09 09:56:21+00:00;1744192581;2025-04-09 09:56:21+00:00;1744192581;---;1;1;Client_1;H;H_2;---;---;---;---;---;---;False;---;False;False;False;False;False;True;---;---;---;---
+2;Togo;2025-04-12 14:10:49+00:00;1744467049;2025-04-12 14:10:49+00:00;1744467049;---;2;2;Client_1;F;F_4;---;---;---;---;---;---;False;---;True;True;False;True;True;True;41.207.165.75;13989;113.199.131.247;52195
+3;Palau;2025-04-24 21:11:50+00:00;1745529110;2025-04-24 21:11:50+00:00;1745529110;---;1;1;Client_1;A;A_1;---;---;---;---;---;---;False;---;False;False;False;True;True;False;---;---;---;---
+4;New Zealand;2025-05-13 00:43:50+00:00;1747097030;2025-05-13 00:43:50+00:00;1747097030;---;1;1;Client_1;J;J_2;---;---;---;---;---;---;False;---;False;False;False;False;False;False;---;---;---;---
+5;Hungary;2025-06-25 19:12:57+00:00;1750878777;2025-06-25 19:12:57+00:00;1750878777;---;1;1;Client_1;A;A_1;---;---;---;---;---;---;False;---;False;False;False;True;True;False;---;---;---;---
+6;Canada;2025-07-12 16:19:42+00:00;1752337182;2025-07-12 16:19:42+00:00;1752337182;---;2;2;Client_2;F;F_3;---;---;---;---;---;---;False;---;True;True;False;True;True;True;68.234.231.165;914;185.17.223.214;63076
+7;Panama;2025-07-15 18:12:18+00:00;1752603138;2025-07-15 18:12:18+00:00;1752603138;---;1;1;Client_1;J;J_1;---;---;---;---;---;---;False;---;False;False;False;False;False;False;---;---;---;---
+8;Luxembourg;2025-09-25 04:30:00+00:00;1758774600;2025-09-25 04:30:00+00:00;1758774600;---;2;2;Client_1;E;E_2;---;---;---;---;---;---;False;---;True;True;False;False;True;True;46.17.173.77;6007;151.135.114.47;63894
+9;Egypt;2025-10-18 02:04:51+00:00;1760753091;2025-10-18 02:04:51+00:00;1760753091;---;2;2;Client_1;E;E_6;---;---;---;---;---;---;False;---;True;True;False;False;True;True;213.131.94.224;44104;46.36.194.253;50466

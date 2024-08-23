@@ -1,0 +1,11 @@
+id;country;raised;raised_tsp;allocated;allocated_tsp;fixed;init_priority;priority;client;family;subfamily;team;analyst;action;duration;duration_outlier;status;escalate;replicated;_feature_0;_feature_1;_feature_2;_feature_3;_feature_4;_feature_5;destination_ip;destination_port;source_ip;source_port
+0;Hungary;2025-04-04 04:33:34+00:00;1743741214;2025-04-04 04:33:34+00:00;1743741214;---;2;2;Client_1;E;E_5;---;---;---;---;---;---;False;---;True;True;False;True;True;True;185.81.23.236;991;216.179.239.21;49535
+1;Luxembourg;2025-04-26 22:11:14+00:00;1745705474;2025-04-26 22:11:14+00:00;1745705474;---;3;3;Client_1;C;C_2;---;---;---;---;---;---;False;---;True;False;False;False;True;True;---;---;---;---
+2;Grenada;2025-04-28 17:51:24+00:00;1745862684;2025-04-28 17:51:24+00:00;1745862684;---;1;1;Client_2;A;A_1;---;---;---;---;---;---;False;---;False;False;False;False;False;False;---;---;---;---
+3;Canada;2025-04-29 16:39:08+00:00;1745944748;2025-04-29 16:39:08+00:00;1745944748;---;1;1;Client_2;A;A_1;---;---;---;---;---;---;False;---;False;False;False;False;False;False;---;---;---;---
+4;Panama;2025-05-10 08:02:43+00:00;1746864163;2025-05-10 08:02:43+00:00;1746864163;---;1;1;Client_1;H;H_3;---;---;---;---;---;---;False;---;False;False;False;False;False;False;---;---;---;---
+5;Egypt;2025-05-14 20:08:06+00:00;1747253286;2025-05-14 20:08:06+00:00;1747253286;---;3;3;Client_1;C;C_7;---;---;---;---;---;---;False;---;True;False;False;False;True;True;---;---;---;---
+6;New Zealand;2025-06-23 05:20:50+00:00;1750656050;2025-06-23 05:20:50+00:00;1750656050;---;1;1;Client_1;H;H_2;---;---;---;---;---;---;False;---;False;False;False;False;False;False;---;---;---;---
+7;Togo;2025-06-24 00:07:03+00:00;1750723623;2025-06-24 00:07:03+00:00;1750723623;---;1;1;Client_1;J;J_3;---;---;---;---;---;---;False;---;False;False;False;False;False;False;---;---;---;---
+8;Palau;2025-07-11 19:32:09+00:00;1752262329;2025-07-11 19:32:09+00:00;1752262329;---;2;2;Client_1;E;E_1;---;---;---;---;---;---;False;---;True;True;False;True;True;True;202.124.227.97;875;41.203.79.68;57665
+9;Antigua and Barbuda;2025-09-24 17:16:47+00:00;1758734207;2025-09-24 17:16:47+00:00;1758734207;---;1;1;Client_1;A;A_1;---;---;---;---;---;---;False;---;False;False;False;False;False;False;---;---;---;---
