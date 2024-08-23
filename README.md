@@ -9,6 +9,8 @@ SNOOKER is a dataset generator designed to create synthetic helpdesk datasets wi
 
 # Dataset Settings
 
+The user may follow a quick generation or personalize with the following parameters:
+
 | **Configurations**             | **Description**                                          |
 |--------------------------------|----------------------------------------------------------|
 | Train and Test Tickets         | Number of train and test tickets                         |
