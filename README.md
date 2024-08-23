@@ -82,5 +82,5 @@ SNOOKER utilizes three data sources:
 # Reference
 - Article
 
-# Remarks
+For further inquiries, contact me at: leosfpt@hotmail.com
 
