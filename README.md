@@ -2,13 +2,14 @@
 
 SNOOKER is a dataset generator designed to create synthetic helpdesk datasets with diverse distributions based on the chosen generation domain selected (currently, only Cybersecurity is implemented). This generator produces training and test datasets consisting of resolved tickets and test datasets comprising open tickets. Each dataset includes simulated incidents with varying incidents properties, managed by different teams of simulated operators, each exhibiting unique traits. These tickets are treated with emulated procedures and can be escalated, prioritized and scheduled, depending on certain conditions
 
-Colocar Imagem das Interfaces (Principal e Secundaria)
-
 # Libraries
-
+- Python
+- PyQT
 
 
 # Dataset Settings
+
+The user may follow a quick generation or build a custom generation with the following parameters:
 
 | **Configurations**             | **Description**                                          |
 |--------------------------------|----------------------------------------------------------|
@@ -80,5 +81,19 @@ SNOOKER utilizes three data sources:
 
 - Configuration File - essentially contains default settings to help generate standard datasets. It possesses information regarding existent teams and their analysts, default families and their attributes, work shift data, day distribution, and other details.
 
-# Remarks
+# Reference
+- Article
+
+For further inquiries, contact me at: leosfpt@hotmail.com
+
+Shield: [![CC BY-NC 4.0][cc-by-nc-shield]][cc-by-nc]
+
+This work is licensed under a
+[Creative Commons Attribution-NonCommercial 4.0 International License][cc-by-nc].
+
+[![CC BY-NC 4.0][cc-by-nc-image]][cc-by-nc]
+
+[cc-by-nc]: https://creativecommons.org/licenses/by-nc/4.0/
+[cc-by-nc-image]: https://licensebuttons.net/l/by-nc/4.0/88x31.png
+[cc-by-nc-shield]: https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg
 
