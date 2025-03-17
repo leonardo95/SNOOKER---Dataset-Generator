@@ -30,7 +30,7 @@ class BufferedRandomChoiceGenerator:
             yield choice
 
 class UtilsParams:
-    def __init__(self, outlier_rate, outlier_cost, action_operations, priority_levels, debug, logger, logger_active):
+    def __init__(self, outlier_rate, outlier_cost, action_operations, priority_levels, debug, logger):
         
         self.outlier_rate = outlier_rate
         self.outlier_cost = outlier_cost
@@ -38,7 +38,6 @@ class UtilsParams:
         self.priority_levels = priority_levels
         self.debug = debug        
         self.logger = logger  
-        self.logger_active = logger_active
         
 # Utils Class
 class Utils:
@@ -48,22 +47,15 @@ class Utils:
         
         if len(logger.handlers) > 0:
             logger.info(message)
-            
-    # Debugs the processes undertaken
-    def debug_code(debug, message):
-        
-        if debug:
-            print(message)
       
     # Logs and debugs the data and processes undertaken
-    def debug_and_log_data(debug, log, logger, message):
+    def debug_and_log_data(debug, logger, message):
         
         if debug:
             print(message)
             
-        if log:
-            if len(logger.handlers) > 0:
-                logger.info(message)
+        if len(logger.handlers) > 0:
+            logger.info(message)
     
     # Closes any excel file opened (prevents output wrinting fail)
     def close_excel():
@@ -127,13 +119,6 @@ class Utils:
         #encoded_names = [name_to_letter[name] for name in families]
         #print(encoded_names)
         return name_to_letter
-    
-    # Updates the seed  
-    def update_seed(seed_spinbox_widget, seed):
-        seed = seed_spinbox_widget.value()
-        print("Updated seed:", seed)
-        random.seed(seed)
-        np.random.seed(seed)
             
     # Sets the seed
     def set_seed(seed):
@@ -231,7 +216,7 @@ class Utils:
         
         return locked
     
-    # Gets the shift where the ticket date is located
+    # Gets the shift where the ticket date is located, assuming 3 shifts: 0: 00h-07h59, 1: 08h-15h59, and 2: 16h-23h59
     def get_ticket_shift(curr_time):
         
         if Utils.check_date_between(time(0, 0, 0, 0), time(7, 59, 59, 999999), curr_time):
@@ -254,9 +239,8 @@ class Utils:
         return analysts
             
     # Prepares the analysts of the next shift and cleans data from analysts of the shift closed
-    def update_analysts_in_next_shift(analysts_data, team, start_date, prev_shift, curr_shift, gen_analysts_info, tt_analysts_info, shifts_data, logger):
+    def update_analysts_in_next_shift(analysts_data, team, start_date, prev_shift, curr_shift, gen_analysts_info, tt_analysts_info, shifts_data, aux_data):
 
-        #Utils.log_data(logger, f'Shift: {curr_shift}')
         if prev_shift != curr_shift:            
             for analyst in analysts_data:
                 if analysts_data[analyst]["shift"] == prev_shift:
@@ -334,7 +318,7 @@ class Utils:
  
             if tickets_inheritance[client][subfamily]["curr_counter"] == subfamily_pool[subfamily]["max_counter"]:
                 del tickets_inheritance[client][subfamily]
-                Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, "Ticket should be replicated due to Max similarity!")
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "Ticket should be replicated due to Max similarity!")
                 ticket["replication_status"] = "Max similarity"
                 ticket["status"] = "Transfer"            
             
@@ -362,21 +346,18 @@ class Utils:
     def check_pending_tickets_priorities(analysts_info, analysts_in_shift, curr_team, ticket_tsp, tickets_info, priority_queues, aux_data):
 
         if Utils.check_tickets_in_team_queue(priority_queues, curr_team):
-            #analysts_free = Utils.get_free_analysts_tsp(curr_dict[curr_team]["analysts"], analysts_in_shift, ticket_tsp, aux_data.logger, False)
-            min_time, min_tsp = Utils.find_min_analyst_endtime(analysts_info[curr_team]["analysts"], analysts_in_shift, aux_data.logger)
-            #Utils.log_data(aux_data.logger, f'Min endtime: {min_time}') 
+            min_time, min_tsp = Utils.find_min_analyst_endtime(analysts_info[curr_team]["analysts"], analysts_in_shift, aux_data)
             Utils.update_tickets_wait_time(curr_team, min_tsp, tickets_info, priority_queues, aux_data)
             Utils.update_tickets_priorities(curr_team, tickets_info, priority_queues, min_time, min_tsp, aux_data)
-            #sys.exit()
 
     # Updates the wait time of the pending tickets
     def update_tickets_wait_time(team, min_curr_tsp, tickets_info, priority_queues, aux_data):
             
         for priority in priority_queues[team]:
             if priority != aux_data.priority_levels: # No need to update the tickets with max priority since there are no greater levels
-                #Utils.log_data(aux_data.logger, f'Priority studied {priority}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Priority studied {priority}')
                 if priority_queues[team][priority]["tickets"]:
-                    #Utils.log_data(aux_data.logger, f'Update pending tickets wait time in team {team} with priority {priority}')
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Update pending tickets wait time in team {team} with priority {priority}')
                     for ticket_id in priority_queues[team][priority]["tickets"]:
                         time_in_queue = Utils.calculate_timestamp_diff(tickets_info[ticket_id]['added_queue_tsp'], min_curr_tsp, "minutes")    
                         tickets_info[ticket_id]['in_queue'] = time_in_queue
@@ -384,23 +365,22 @@ class Utils:
     # Updates the priorities of the tickets          
     def update_tickets_priorities(team, tickets_info, priority_queues, min_time, min_time_tsp, aux_data):
 
-        Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Priorities queue BEFORE: {priority_queues}')
+        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Priorities queue BEFORE: {priority_queues}')
         priorities_changed, new_priority_team = {}, {}
         Utils.instantiate_priority_queues(aux_data.priority_levels, new_priority_team)
            
         for priority in priority_queues[team]:
             if priority_queues[team][priority]["tickets"]:                
-                #Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active aux_data.logger, f'Curr Priority: {priority}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Curr Priority: {priority}')
 
                 if priority == aux_data.priority_levels:
                     if new_priority_team[priority]["tickets"]:
                         new_priority_team[priority]["tickets"] = new_priority_team[priority]["tickets"] + list(priority_queues[team][priority]["tickets"])
-                        #print("Together", new_priority_team[priority]["tickets"])
                     
                         sorted_id_list = Utils.sort_priority_tickets(new_priority_team[priority]["tickets"], tickets_info, aux_data)
                         if sorted_id_list != None:
                             new_priority_team[priority]["tickets"] = sorted_id_list
-                            #Utils.log_data(aux_data.logger, f'After in max priority: {new_priority_team[priority]["tickets"]}')
+                            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'After in max priority: {new_priority_team[priority]["tickets"]}')
                     else:
                         Utils.update_data(new_priority_team[priority], tickets = list(priority_queues[team][priority]["tickets"]))
                 else:
@@ -411,13 +391,13 @@ class Utils:
                         else:
                             Utils.update_data(new_priority_team[priority], tickets = list(priority_queues[team][priority]["tickets"]))
                     else:
-                        #Utils.log_data(aux_data.logger, f'Avg of the last {5} tickets in priority {priority} with multiplier {2} is {avg}')
+                        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Avg of the last {5} tickets in priority {priority} with multiplier {2} is {avg}')
                         for ticket_id in priority_queues[team][priority]["tickets"]:    
                             if tickets_info[ticket_id]['in_queue'] >= avg: 
                                 next_priority = Utils.get_next_priority(priority, aux_data.priority_levels)
-                                #Utils.log_data(aux_data.logger, f'Ticket {ticket_id} will be moved to priority {next_priority}')
+                                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Ticket {ticket_id} will be moved to priority {next_priority}')
                                 new_priority_team[next_priority]["tickets"].append(ticket_id)
-                                #Utils.log_data(aux_data.logger, f'Ticket {ticket_id} is in queue since {tickets_info[ticket_id]["in_queue"]} minutes')
+                                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Ticket {ticket_id} is in queue since {tickets_info[ticket_id]["in_queue"]} minutes')
                                         
                                 tickets_info[ticket_id]['priority'] = next_priority
                                 tickets_info[ticket_id]['added_queue_time'] = min_time
@@ -429,36 +409,33 @@ class Utils:
                                 if ticket_id not in priorities_changed[next_priority]:
                                     priorities_changed[next_priority].append(ticket_id)
                             else:
-                                #Utils.log_data(aux_data.logger, f'Ticket {ticket_id} queue time {tickets_info[ticket_id]["in_queue"]} is below {avg}')
+                                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Ticket {ticket_id} queue time {tickets_info[ticket_id]["in_queue"]} is below {avg}')
                                 new_priority_team[priority]["tickets"].append(ticket_id)
 
         #print(f'Priorities queue before: {priority_queues[team]}')
         priority_queues[team] = new_priority_team
         
         if priorities_changed:
-            #Utils.log_data(aux_data.logger, f'Tickets added updated queue time: {min_curr_time}')
-            #Utils.log_data(aux_data.logger, f'Tickets were added to priorities {priorities_changed}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Tickets were added to priorities {priorities_changed}')
             for priority in priorities_changed:
                 sorted_id_list = Utils.sort_priority_tickets(priority_queues[team][priority]["tickets"], tickets_info, aux_data.logger)
                 if sorted_id_list != None:
-                    #Utils.log_data(aux_data.logger, f'Before {team} {priority}: {priority_queues[team][priority]["tickets"]}')
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Before {team} {priority}: {priority_queues[team][priority]["tickets"]}')
                     priority_queues[team][priority]["tickets"] = sorted_id_list
-                    #Utils.log_data(aux_data.logger, f'After {team} {priority}: {priority_queues[team][priority]["tickets"]}')
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'After {team} {priority}: {priority_queues[team][priority]["tickets"]}')
             
-            #Utils.log_data(aux_data.logger, f'Priorities queue AFTER: {priority_queues}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Priorities queue AFTER: {priority_queues}')
          
     # Updates allocation times of the pending tickets                   
     def update_allocated_times(tickets_info, priority_queues, team, min_curr_time, min_curr_tsp, aux_data):
         
-        #Utils.log_data(aux_data.logger, f'Curr priorities {priority_queues[team]}')
-        #for team in priority_queues:
+        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Curr priorities {priority_queues[team]}')
         for priority in priority_queues[team]:
-            #print("priority:", priority)
             if priority_queues[team][priority]["tickets"]:
                 for ticket_id in priority_queues[team][priority]["tickets"]:
                     if min_curr_tsp > tickets_info[ticket_id]['allocated_tsp']:
                         Utils.update_data(tickets_info[ticket_id], allocated = min_curr_time, allocated_tsp = min_curr_tsp, temp_allocated = min_curr_time, temp_allocated_tsp = min_curr_tsp)
-                        #Utils.log_data(aux_data.logger, f'ticket {ticket_id} allocated updated: {tickets_info[ticket_id]["allocated"]}')
+                        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'ticket {ticket_id} allocated updated: {tickets_info[ticket_id]["allocated"]}')
                         if "analysed_in_shift" in tickets_info[ticket_id]:
                             del tickets_info[ticket_id]['analysed_in_shift']
                             
@@ -522,10 +499,9 @@ class Utils:
             if not in_generation:
                 Utils.update_data(rep_ticket, similar_subfamilies = original_ticket["similar_subfamilies"], init_priority = original_ticket["init_priority"])
             
-            #Utils.log_data(logger, f'N replicated_tickets: {n_replicated} in {team}')
-            #Utils.log_data(logger, f'New ticket was added to upper teams: {priority_queues[next_team][original_ticket["priority"]]["tickets"]}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'N replicated_tickets: {n_replicated} in {team}. New ticket was added to upper teams: {priority_queues[next_team][original_ticket["priority"]]["tickets"]}')
         else:
-            Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, "Can't be replicated because it is already on the top team")
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "Can't be replicated because it is already on the top team")
     
         return n_replicated
     
@@ -533,26 +509,23 @@ class Utils:
     def get_next_ticket(ticket, close_shift, curr_shift, analysts_in_shift, original_dict_idx, tickets, original_keys, analysts_info, priority_queues, families_resolution, shifts_data, aux_data):
 
         if Utils.check_tickets_in_team_queue(priority_queues, ticket["team"]):
-            #Utils.log_data(aux_data.logger, f'Priority queue {priority_queues}')
-            #Utils.log_data(aux_data.logger, f'Shift: {curr_shift}')
-            next_ticket_id, temp_date, temp_tsp, highest_priority_ticket_id = Utils.get_next_pending_ticket(ticket, analysts_info, analysts_in_shift, priority_queues[ticket["team"]], tickets, close_shift, families_resolution, shifts_data[curr_shift], aux_data.logger)
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Priority queue {priority_queues}. Shift: {curr_shift}')
+            next_ticket_id, temp_date, temp_tsp, highest_priority_ticket_id = Utils.get_next_pending_ticket(ticket, analysts_info, analysts_in_shift, priority_queues[ticket["team"]], tickets, close_shift, families_resolution, shifts_data[curr_shift], aux_data)
             
             update_ticket = True
             if "analysed_in_shift" in tickets[next_ticket_id]:
-                #Utils.log_data(aux_data.logger, f'id {next_ticket_id} was analysed in shift {curr_shift}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'id {next_ticket_id} was analysed in shift {curr_shift}')
                 update_ticket = False
                 
-            #Utils.log_data(aux_data.logger, f'Update_ticket: {update_ticket}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Update_ticket: {update_ticket}')
 
             if original_dict_idx + 1 >= len(original_keys):
-                #print("Original data already read!")
-                #Utils.log_data(aux_data.logger, "Original data already read!")
-                #Utils.log_data(aux_data.logger, f'Next_id {next_ticket_id} - {tickets[next_ticket_id]["allocated"]}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Original data already read!. Next_id {next_ticket_id} - {tickets[next_ticket_id]["allocated"]}')
                 
                 if update_ticket:
                     tickets[next_ticket_id]["allocated"] = temp_date
                     tickets[next_ticket_id]["allocated_tsp"] = temp_tsp
-                    #Utils.log_data(aux_data.logger, f'Test ticket {next_ticket_id} in {temp_date}')
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Test ticket {next_ticket_id} in {temp_date}')
                     return next_ticket_id, original_dict_idx, curr_shift, analysts_in_shift
                 else:
                     pending_shift = Utils.get_ticket_shift(temp_date.time())
@@ -560,15 +533,13 @@ class Utils:
                     Utils.update_allocated_times(tickets, priority_queues, ticket["team"], next_ticket_date, next_ticket_date.timestamp(), aux_data) 
                     analysts_in_next_shift = Utils.get_operators_in_shift(analysts_info[ticket["team"]], next_shift)
                     #print(f'Ticket {next_ticket_id} i scheduled for {next_ticket_date} on shift {next_shift} with operators {analysts_in_next_shift}')
-                    #Utils.log_data(aux_data.logger, f'Pending tickets are going to be analysed in {next_ticket_date} on shift {next_shift} with operators {analysts_in_next_shift}')
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Pending tickets are going to be analysed in {next_ticket_date} on shift {next_shift} with operators {analysts_in_next_shift}')
                     return next_ticket_id, original_dict_idx, next_shift, analysts_in_next_shift
             else:
-                #pending_ticket_date = pending_ticket["allocated"]
                 next_original_key = original_keys[original_dict_idx + 1]
                 next_original_ticket_date = tickets[next_original_key]["raised"] 
 
-                #Utils.log_data(aux_data.logger, f'Pending date: {temp_date}')
-                #Utils.log_data(aux_data.logger, f'Next original ticket: {tickets[next_original_key]["raised"]}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Pending date: {temp_date}. Next original ticket: {tickets[next_original_key]["raised"]}')
                 
                 if temp_date <= next_original_ticket_date:
                     pending_shift = Utils.get_ticket_shift(temp_date.time())
@@ -579,16 +550,16 @@ class Utils:
                             Utils.update_allocated_times(tickets, priority_queues, ticket["team"], next_ticket_date, next_ticket_date.timestamp(), aux_data) 
                             analysts_in_next_shift = Utils.get_operators_in_shift(analysts_info[ticket["team"]], next_shift)
                             #print(f'Ticket {next_ticket_id} i scheduled for {next_ticket_date} on shift {next_shift} with operators {analysts_in_next_shift}')
-                            #Utils.log_data(aux_data.logger, f'Pending tickets are going to be analysed in {next_ticket_date} on shift {next_shift} with operators {analysts_in_next_shift}')
+                            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Pending tickets are going to be analysed in {next_ticket_date} on shift {next_shift} with operators {analysts_in_next_shift}')
                             return next_ticket_id, original_dict_idx, next_shift, analysts_in_next_shift
 
                         tickets[next_ticket_id]["allocated"] = temp_date
                         tickets[next_ticket_id]["allocated_tsp"] = temp_tsp
-                        #Utils.log_data(aux_data.logger, f'Test ticket {next_ticket_id} in {temp_date}')
+                        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Test ticket {next_ticket_id} in {temp_date}')
                                 
                         if Utils.get_ticket_shift(tickets[next_ticket_id]["allocated"].time()) != curr_shift:
                             next_shift = Utils.get_next_shift(Utils.get_ticket_shift(tickets[next_ticket_id]["allocated"].time()))
-                            #Utils.log_data(aux_data.logger, f'next_shift {next_shift}')
+                            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'next_shift {next_shift}')
                             analysts_in_next_shift = Utils.get_operators_in_shift(analysts_info[ticket["team"]], next_shift)
                             return next_ticket_id, original_dict_idx, next_shift, analysts_in_next_shift
                         else:
@@ -597,11 +568,11 @@ class Utils:
                         if update_ticket:
                             tickets[next_ticket_id]["allocated"] = temp_date
                             tickets[next_ticket_id]["allocated_tsp"] = temp_tsp
-                            #Utils.log_data(aux_data.logger, f'Test ticket {next_ticket_id} in {temp_date}')
+                            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Test ticket {next_ticket_id} in {temp_date}')
                             
                             if Utils.get_ticket_shift(tickets[next_ticket_id]["allocated"].time()) != curr_shift:
                                 next_shift = Utils.get_next_shift(Utils.get_ticket_shift(tickets[next_ticket_id]["allocated"].time()))
-                                #Utils.log_data(aux_data.logger, f'next_shift {next_shift}')
+                                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'next_shift {next_shift}')
                                 analysts_in_next_shift = Utils.get_operators_in_shift(analysts_info[ticket["team"]], next_shift)
                                 return next_ticket_id, original_dict_idx, next_shift, analysts_in_next_shift
                             else:
@@ -612,11 +583,11 @@ class Utils:
             next_id = original_keys[original_dict_idx]
             if Utils.get_ticket_shift(tickets[next_id]["allocated"].time()) != curr_shift:
                 next_shift = Utils.get_ticket_shift(tickets[next_id]["allocated"].time())
-                #Utils.log_data(aux_data.logger, f'next_shift {next_shift}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'next_shift {next_shift}')
                 analysts_in_next_shift = Utils.get_operators_in_shift(analysts_info[ticket["team"]], next_shift)
                 return next_id, original_dict_idx, next_shift, analysts_in_next_shift
                 
-            #Utils.log_data(aux_data.logger, f'Ticket id {next_id} is read from original_dict')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Ticket id {next_id} is read from original_dict')
             #print(f'Next ticket id {next_id} is read from original_dict. Index {original_dict_idx}')
         else:
             next_id = None
@@ -691,8 +662,6 @@ class Utils:
         start_date_time = datetime.strptime(shifts_data[start_date_shift]["start"], "%H:%M:%S.%f").time()
         start_date_combined = datetime.combine(start_date_date, start_date_time)
         start_date_combined_utc = pytz.UTC.localize(start_date_combined)
-        #print("Start_date_combined:", start_date_combined)
-        #print("In utc:", start_date_combined_utc)
         
         return start_date_combined_utc, start_date_combined_utc.timestamp()
     
@@ -705,25 +674,22 @@ class Utils:
             if analysts_info[analyst]["fixed_tsp"] <= ticket_tsp: 
                 free_analysts.append(analyst)
             else:
-                Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'{analyst} occupied until {analysts_info[analyst]["fixed"]}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'{analyst} occupied until {analysts_info[analyst]["fixed"]}')
                 
-# =============================================================================
-#         if not free_analysts:
-#             print("No analysts available at the moment!")
-#             Utils.log_data(self.aux_data.logger, "No analysts available at the moment!")
-# =============================================================================
-            
-        #Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Analysts available: {free_analysts}')
+        if not free_analysts:
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "No analysts available at the moment!")
+        else:
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Analysts available: {free_analysts}')
 
         return free_analysts
     
     # Gets the earliest ending datetime of all analysts
-    def find_min_analyst_endtime(analysts_data, analysts_in_shift, logger):
+    def find_min_analyst_endtime(analysts_data, analysts_in_shift, aux_data):
         
         min_time = None
         min_curr_tsp = float('inf')
         for analyst in analysts_in_shift:
-            #Utils.log_data(logger, f'{analyst} - {analysts_data[analyst]["fixed"]}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'{analyst} - {analysts_data[analyst]["fixed"]}')
             if min_curr_tsp >= analysts_data[analyst]["fixed_tsp"]:
                 min_time = analysts_data[analyst]["fixed"]
                 min_curr_tsp = analysts_data[analyst]["fixed_tsp"]
@@ -753,7 +719,7 @@ class Utils:
         sorted_id_list = None
         if tickets and not Utils.is_sorted_by_datetime(tickets, tickets_info):
             sorted_id_list = sorted(tickets, key=lambda item: tickets_info[item]["raised_tsp"])
-            #Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Sorted tickets ids: {sorted_id_list}') 
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Sorted tickets ids: {sorted_id_list}') 
             
         return sorted_id_list
     
@@ -763,11 +729,8 @@ class Utils:
         avg = None
         if len(priority_queue) > n_tickets:
             n_ticket_ids = priority_queue[-n_tickets:]
-            #Utils.log_data(logger, f'priority_queue: {priority_queue}')
-            #Utils.log_data(logger, f'last {n_tickets} tickets are: {n_ticket_ids}')
             n_total_in_queue = 0
             for ticket_id in n_ticket_ids:
-                #Utils.log_data(logger, f'Ticket id {ticket_id} in queue: {tickets_info[ticket_id]["in_queue"]} minutes')
                 n_total_in_queue += tickets_info[ticket_id]['in_queue']
                 
             avg = (n_total_in_queue / n_tickets) * multiplier
@@ -795,70 +758,57 @@ class Utils:
         return [str for str in string if any(sub in str for sub in substr)]
     
     # Gets the next pending ticket from replicated and pending tickets
-    def get_next_pending_ticket(ticket, analysts_info, analysts_in_shift, team_priority_queue, tickets, close_shift, families_resolution, shift_data, logger):
+    def get_next_pending_ticket(ticket, analysts_info, analysts_in_shift, team_priority_queue, tickets, close_shift, families_resolution, shift_data, aux_data):
 
         min_time, min_tsp = None, None
         
-        max_priority = Utils.get_highest_priority_with_tickets(team_priority_queue, logger)
-        min_time, min_tsp = Utils.find_min_analyst_endtime(analysts_info[ticket["team"]]["analysts"], analysts_in_shift, logger)
+        max_priority = Utils.get_highest_priority_with_tickets(team_priority_queue)
+        min_time, min_tsp = Utils.find_min_analyst_endtime(analysts_info[ticket["team"]]["analysts"], analysts_in_shift, aux_data)
         highest_priority_ticket_id = team_priority_queue[max_priority]["tickets"][0]
         
         if close_shift:
-            #Utils.log_data(logger, f'Priority queue {team_priority_queue}')
-            #Utils.log_data(logger, f'Ticket date: {ticket["allocated"]}')
-            #Utils.log_data(logger, f'Min time: {min_time}')
-            #Utils.log_data(logger, "Close shift")
-            
-            #least_priority, least_ticket = Utils.get_least_priority_ticket(team_priority_queue, logger)
-            #Utils.log_data(logger, f'The ticket with lowest priority is {least_ticket} from priority {least_priority}')
-
-            #if ticket["id"] == least_ticket:
             if ticket["id"] == highest_priority_ticket_id:
-                Utils.log_data(logger, "Is the highest priority ticket")
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "Is the highest priority ticket")
             else:
                 if ticket["id"] in team_priority_queue[ticket["priority"]]["tickets"]:
-                    Utils.log_data(logger, f'Curr ticket id {ticket["id"]} is the ticket with lowest priority')
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Curr ticket id {ticket["id"]} is the ticket with lowest priority')
                 else:
-                    Utils.log_data(logger, "Curr ticket id was fixed")
-                    
-            #Utils.log_data(logger, "Test with other tickets with lower priority")
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "Curr ticket id was fixed")
             
             end_time = datetime.strptime(shift_data["end"], "%H:%M:%S.%f").time()
             end_datetime = datetime.combine(min_time.date(), end_time)
             end_datetime_utc = end_datetime.replace(tzinfo=pytz.UTC)
             end_datetime_tsp = end_datetime_utc.timestamp()
             
-            remaining_time = Utils.calculate_timestamp_diff(end_datetime_tsp, min_tsp, "minutes")
-            #Utils.log_data(logger, f'Remaining time until shift ending: {remaining_time}. End datetime: {end_time}, Min Time: {min_time}')    
+            remaining_time = Utils.calculate_timestamp_diff(end_datetime_tsp, min_tsp, "minutes")    
             
             ticket_id_index = 0
-            next_ticket_id = Utils.get_next_ticket_id_pending(ticket_id_index, team_priority_queue, max_priority, tickets, families_resolution, remaining_time, logger)
+            next_ticket_id = Utils.get_next_ticket_id_pending(ticket_id_index, team_priority_queue, max_priority, tickets, families_resolution, remaining_time, aux_data)
             if next_ticket_id != None:
                 return next_ticket_id, min_time, min_tsp, highest_priority_ticket_id
             
             next_priority = max_priority - 1
             if next_priority >= min(team_priority_queue): 
-                #Utils.log_data(logger, "Check next priorities")
             
                 ticket_id_index = 0
                 while next_priority >= min(team_priority_queue): 
-                    #Utils.log_data(logger, f'Next priority {next_priority}')
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Next priority {next_priority}')
                     if team_priority_queue[next_priority]["tickets"]:
-                        #Utils.log_data(logger, f'Number of tickets in the next priority {next_priority} is {len(team_priority_queue[next_priority]["tickets"])}')
-                        next_ticket_id = Utils.get_next_ticket_id_pending(ticket_id_index, team_priority_queue, next_priority, tickets, families_resolution, remaining_time, logger)
+                        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Number of tickets in the next priority {next_priority} is {len(team_priority_queue[next_priority]["tickets"])}')
+                        next_ticket_id = Utils.get_next_ticket_id_pending(ticket_id_index, team_priority_queue, next_priority, tickets, families_resolution, remaining_time, aux_data)
                         if next_ticket_id != None:
                             return next_ticket_id, min_time, min_tsp, highest_priority_ticket_id
                         
                     next_priority = next_priority - 1
                     ticket_id_index = 0
             
-            #Utils.log_data(logger, "All pending tickets were verified")
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "All pending tickets were verified")
 
         if min_time > tickets[highest_priority_ticket_id]["allocated"]:
-            #Utils.log_data(logger, f'Send the ticket with highest priority {highest_priority_ticket_id}. Use min analyst date: {min_time}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Send the ticket with highest priority {highest_priority_ticket_id}. Use min analyst date: {min_time}')
             return highest_priority_ticket_id, min_time, min_tsp, highest_priority_ticket_id
         else:
-            #Utils.log_data(logger, f'Send the ticket with highest priority {highest_priority_ticket_id} with its date: {tickets[highest_priority_ticket_id]["allocated"]}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Send the ticket with highest priority {highest_priority_ticket_id} with its date: {tickets[highest_priority_ticket_id]["allocated"]}')
             return highest_priority_ticket_id, tickets[highest_priority_ticket_id]["allocated"], tickets[highest_priority_ticket_id]["allocated_tsp"], highest_priority_ticket_id
         
     # Verifies if list of tickets is sorted by datetime
@@ -875,7 +825,7 @@ class Utils:
         return True
     
     # Returns the most priority ticket
-    def get_highest_priority_with_tickets(team_tickets, logger):
+    def get_highest_priority_with_tickets(team_tickets):
         
         min_priority = min(team_tickets)
         max_priority = max(team_tickets)
@@ -897,7 +847,7 @@ class Utils:
                 return priority, team_tickets[priority]["tickets"][-1]
             
     # Delivers the next ticket id waiting for treatment
-    def get_next_ticket_id_pending(ticket_id_index, team_priority_queue, priority, tickets, families_resolution, remaining_time, logger):
+    def get_next_ticket_id_pending(ticket_id_index, team_priority_queue, priority, tickets, families_resolution, remaining_time, aux_data):
         
         while True:
             if ticket_id_index < len(team_priority_queue[priority]["tickets"]):
@@ -905,15 +855,15 @@ class Utils:
                 if "analysed_in_shift" not in tickets[temp_ticket_id]:
                     if tickets[temp_ticket_id]["family"] in families_resolution:
                         if families_resolution[tickets[temp_ticket_id]["family"]]["avg_time"] < remaining_time:
-                            #Utils.log_data(logger, f'Check next id is {temp_ticket_id} from priority {priority}')
+                            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Check next id is {temp_ticket_id} from priority {priority}')
                             return temp_ticket_id
                         else:
-                            Utils.log_data(logger, f'Next id should not be analysed now since the average is {families_resolution[tickets[temp_ticket_id]["family"]]["avg_time"]}')
+                            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Next id should not be analysed now since the average is {families_resolution[tickets[temp_ticket_id]["family"]]["avg_time"]}')
                     else:
-                        Utils.log_data(logger, f'Check next id is {temp_ticket_id} from priority {priority}. Not registed in families resolution')
+                        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Check next id is {temp_ticket_id} from priority {priority}. Not registed in families resolution')
                         return temp_ticket_id
                 #else:
-                #    Utils.log_data(logger, f'Id {temp_ticket_id} from priority {priority} already checked in the past')
+                #    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Id {temp_ticket_id} from priority {priority} already checked in the past')
             else:
                 break
             ticket_id_index += 1
@@ -967,11 +917,10 @@ class Utils:
                 if generation:
                     Utils.check_similar_coordinated_tickets(new_dict[curr_id], new_dict, tickets_inheritance, subfamily_pool, generation, aux_data)
                      
-            #print("Before Replicated tickets:", replicated_tickets)
             if team != all_teams[0]:
                 if team not in replicated_tickets:
                     replicated_tickets[team] = []
-                #print("Next ticket replicated from original:", next_ticket["replicated"])
+                    
                 if team == all_teams[1]:
                     next_teams = Utils.get_next_teams(team, list(replicated_tickets.keys()))
                     total_replicated_tickets = []
@@ -980,9 +929,7 @@ class Utils:
 
                     increment = Utils.get_increment_with_id_greater(next_ticket["replicated"] + n_replicated, total_replicated_tickets)
                     new_dict[curr_id]["replicated"] += increment
-                    #print("New replicated from:", new_dict[curr_id]["replicated"])
                 else:
-                    #print("Higher")
                     team_idx = all_teams.index(team)
                     prev_team = all_teams[team_idx-1]
                     for prev_ticket in replicated_tickets[prev_team]:
@@ -1009,33 +956,32 @@ class Utils:
         transitions = []
         family_techniques = family_steps_pool[team][family]
         action = Utils.change_action_format(action)
-        #Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Calculate action duration of {action}')
+        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Calculate action duration of {action}')
 
         for step in action:
             #print("Step:", step)
             if step in family_steps_pool[team][family]["transfer_opt"].keys():
-                #Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, "Last step is a transfer operation")
+                #Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "Last step is a transfer operation")
                 subtech_dur = family_steps_pool[team][family]["transfer_opt"][step]
             elif step in family_techniques["other_steps"].keys():
-                #Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, "Step comes from other families")
+                #Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "Step comes from other families")
                 subtech_dur = family_techniques["other_steps"][step]
             else:
                 subtech_dur = family_subtechniques[team][family][step]
-            #print("Sub method dur:", subtech_dur)
-                    
+    
             if user != None:  
-                Utils.debug_code(aux_data.debug, f'Get duration of step {step} for {user}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Get duration of step {step} for {user}')
                 step_speed = float(steps_data[step]["speed"])
-                #Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Base Duration: {subtech_dur}. Step Speed: {step_speed}')
+                #Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Base Duration: {subtech_dur}. Step Speed: {step_speed}')
                 user_step_dur = Utils.get_user_step_range(subtech_dur, step_speed)
-                #Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Duration of step {step} executed by {user} is {user_step_dur}')
+                #Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Duration of step {step} executed by {user} is {user_step_dur}')
                 dur = dur + user_step_dur
                 transitions.append(user_step_dur)
             else:
-                #Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'The duration of step {step} is {dur}')
+                #Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'The duration of step {step} is {dur}')
                 dur = dur + subtech_dur
                 
-        #Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Final duration: {round(dur, 2)}')
+        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Final duration: {round(dur, 2)}')
         return round(dur, 2), transitions
     
     # Gets the duration of an analyst-step
@@ -1048,20 +994,18 @@ class Utils:
             min_step_dur = subtechnique_dur / speed
             max_step_dur = subtechnique_dur * speed
         
-        #print("Max step dur:", round(max_step_dur, 2))
-        #print("Min step dur:", round(min_step_dur, 2))
         user_step_dur = random.uniform(min_step_dur, max_step_dur)
         return round(user_step_dur, 2)
     
     # Verifies whether the current shift is near its closure
-    def check_close_sfift(team_priority_queue, tickets_info, logger):
+    def check_close_sfift(team_priority_queue, tickets_info, aux_data):
         
-        max_priority = Utils.get_highest_priority_with_tickets(team_priority_queue, logger)
+        max_priority = Utils.get_highest_priority_with_tickets(team_priority_queue)
         #print("Max priority_:", max_priority)
         if max_priority != None:
             highest_priority_ticket_id = team_priority_queue[max_priority]["tickets"][0]
             if "analysed_in_shift" in tickets_info[highest_priority_ticket_id]:
-                Utils.log_data(logger, "Highest priority ticket already analysed. Closed shift is set to true to review the remaining pending tickets")
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "Highest priority ticket already analysed. Closed shift is set to true to review the remaining pending tickets")
                 return True
             
         return False
@@ -1070,11 +1014,11 @@ class Utils:
     def send_ticket_priority_queue(ticket, priority_queues, aux_data, issue):
         
         if issue == 0:    
-            Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, "Shift is almost ending. Add the ticket to the priority queue by the generator")
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "Shift is almost ending. Add the ticket to the priority queue by the generator")
         elif issue == 1:
-            Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, "At the moment, all analysts are occupied. Add the ticket to the priority queue by the generator")
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "At the moment, all analysts are occupied. Add the ticket to the priority queue by the generator")
         else:
-            Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, "No one is working on current shift. Schedule for next shift")
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "No one is working on current shift. Schedule for next shift")
 
         ticket_id = ticket["id"]
         if ticket_id not in priority_queues[ticket["team"]][ticket["priority"]]["tickets"]:
@@ -1083,8 +1027,8 @@ class Utils:
             ticket['added_queue_tsp'] = ticket['raised_tsp']
         else:
             Utils.update_data(ticket, allocated = ticket["temp_allocated"], allocated_tsp = ticket["temp_allocated_tsp"])
-            Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Ticket {ticket_id} already in priority_queue. Reset date to {ticket["temp_allocated"]}')
-            #Utils.log_data(logger, f'Reset time {ticket["temp_allocated"].time()}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Ticket {ticket_id} already in priority_queue. Reset date to {ticket["temp_allocated"]}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Reset time {ticket["temp_allocated"].time()}')
             
     # Checks the ticket status
     def check_ticket_distance(ticket, user_action, subfamily_action, actions_similarity, all_teams, ticket_verification):
@@ -1093,10 +1037,7 @@ class Utils:
         distance = Utils.calculate_distance(user_action, subfamily_action)
         ticket["distance"] = distance
 
-        #if (ticket_id in tickets_ids_to_replicate) or (distance >= Variables.actions_similarity) or (ticket["escalate"]):
         if distance >= actions_similarity and ticket_verification:
-            #print("teams:", all_teams)
-            #print("Curr team:", team)
             index = all_teams.index(team)
             if index <= 2:
                 return "Transfer"
@@ -1105,8 +1046,6 @@ class Utils:
     # Updates the action and its duration according to its escalation status
     def convert_to_escaleted_action(ticket, action, transfer_data):
 
-        #team = ticket["team"]
-        #family = ticket["family"]
         action[-1] = transfer_data[0]
         #print("Prev action:", action)
         if len(action) > 2:
@@ -1122,9 +1061,8 @@ class Utils:
         return Utils.change_action_format(action_updated)
     
     # Verifies if the time that it takes to fix a ticket surpasses the user shift
-    def check_shift_ending(ticket_time_complete, action_dur, debug):
+    def check_shift_ending(ticket_time_complete, action_dur, aux_data):
         
-        #print("Action dur:", action_dur)
 # =============================================================================
 #         print("Ticket complete:", ticket_time_complete)
 #         
@@ -1143,7 +1081,7 @@ class Utils:
         next_hour = next_time.hour
 
         if (current_hour == 6 and next_hour == 8) or (current_hour == 7 and next_hour == 8) or (current_hour == 7 and next_hour == 9) or (current_hour == 14 and next_hour == 16) or (current_hour == 15 and next_hour == 16) or (current_hour == 15 and next_hour == 17) or (current_hour == 22 and next_hour == 0) or (current_hour == 23 and next_hour == 0) or (current_hour == 23 and next_hour == 1) or (current_hour == 23 and next_hour == 2):
-            Utils.debug_code(debug, "Action will surpass the analyst's shift")
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "Action will surpass the analyst's shift")
             return True
         else:
             return False
@@ -1154,50 +1092,48 @@ class Utils:
         subtechniques = action.split("'")
         subtechniques_cleaned = [x for x in subtechniques if x]
 
-        Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Generate action for analyst {member} using the action {subtechniques_cleaned} in subfamily {subfamily}')
-        #print("Steps info:", steps_info)
-        
-        #print("Operations available:", aux_data.action_operations)
+        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Generate action for analyst {member} using the action {subtechniques_cleaned} in subfamily {subfamily}')
+
         operations_number = random.randint(2, 3)
         operations = random.choices(aux_data.action_operations, (0.85, 0.05, 0.05, 0.05), k = operations_number)
         
         while ('+' or '-' or '%') not in operations:
             operations = random.choices(aux_data.action_operations, (0.85, 0.05, 0.05, 0.05), k = operations_number)
-            #Utils.log_data(aux_data.logger, f'Operations: {operations}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Operations: {operations}')
 
         for opt in operations:      
-            Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Operation: {opt}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Operation: {opt}')
             if opt == '+':
                 subtechniques_available = Utils.get_subtechniques(family, steps_info, "--", special_tech)
                 add_subtechnique = random.choice(subtechniques_available)
                 pos = random.randint(1, len(subtechniques_cleaned) - 1)
                 subtechniques_cleaned = subtechniques_cleaned[:pos] + [add_subtechnique] + subtechniques_cleaned[pos:]
-                Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'{add_subtechnique} is going to be added to position {pos}. Updated action: {subtechniques_cleaned}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'{add_subtechnique} is going to be added to position {pos}. Updated action: {subtechniques_cleaned}')
             elif opt == '-':
                 if len(subtechniques_cleaned) > 2:
                     pos = random.randint(1, len(subtechniques_cleaned) - 2)
                     subtechniques_cleaned = subtechniques_cleaned[:pos] + subtechniques_cleaned[pos + 1:]
-                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Position to remove sub: {pos}')
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Position to remove sub: {pos}')
                 else:
                     operation_added = np.random.choice(aux_data.action_operations, p = [0.7, 0.1, 0.1, 0.1])
                     operations.append(operation_added)
-                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Cannot remove open and close steps! The operation {operation_added} was added')       
-                Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Updated action: {subtechniques_cleaned}')
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Cannot remove open and close steps! The operation {operation_added} was added')       
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Updated action: {subtechniques_cleaned}')
             elif opt == '%':
                 if len(subtechniques_cleaned) > 2:
                     pos = random.randint(1, len(subtechniques_cleaned) - 2)    
                     subtechniques_available = Utils.get_subtechniques(family, steps_info, subtechniques_cleaned[pos], special_tech)
                     to_update_subtechnique = random.choice(subtechniques_available)
                     subtechniques_cleaned = subtechniques_cleaned[:pos] + [to_update_subtechnique] + subtechniques_cleaned[pos+1:]
-                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'The step in position {pos} was changed with {to_update_subtechnique}. Updated action: {subtechniques_cleaned}')    
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'The step in position {pos} was changed with {to_update_subtechnique}. Updated action: {subtechniques_cleaned}')    
                 else:
                     operation_added = np.random.choice(aux_data.action_operations, p=[0.7, 0.1, 0.1, 0.1])
                     operations.append(operation_added)
-                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Cannot change since only open and close steps! The operation {operation_added} was added')    
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Cannot change since only open and close steps! The operation {operation_added} was added')    
             else:
-                Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'No changes to the action since the operation is: {opt}')    
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'No changes to the action since the operation is: {opt}')    
             
-        Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Analyst action after transformations: {subtechniques_cleaned}') 
+        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Analyst action after transformations: {subtechniques_cleaned}') 
         return subtechniques_cleaned
     
     # Gets the duration of an action with outlier
@@ -1240,8 +1176,6 @@ class Utils:
         else:
             learning_rate -= 0.001
         learning_rate = round(learning_rate, 3)
-        #print("Analyst growth:", analyst_growth)
-        #print("step curr Speed:", steps_data[step]["speed"])
         speed_updated = Utils.get_speed(analyst_growth, learning_rate)
         return learning_rate, speed_updated
     
@@ -1287,8 +1221,6 @@ class Utils:
                 first_key = list(all_tickets[team].keys())[0]
                 #print("First key:", first_key)
                 first_ticket = all_tickets[team][first_key]
-                #print("Raised:", first_ticket["raised"])
-                #print("Raised tsp:", first_ticket["raised_tsp"])
                 if min_raised_tsp == None:
                     key_picked = first_key
                     ticket = first_ticket
@@ -1311,7 +1243,6 @@ class Utils:
         #print("All teams:", all_teams)
         if team in all_teams:
             curr_team_idx = all_teams.index(team)
-            #print("Aqui:", curr_team_idx)
             for next_team_idx in range(curr_team_idx, len(all_teams)):
                 next_teams.append(all_teams[next_team_idx])
     
@@ -1322,9 +1253,7 @@ class Utils:
     def get_increment_with_id_greater(curr_id, replicated_ids):
         
         increment = 0
-        #print("Replicated ids:", replicated_ids)
         for element in replicated_ids:
-            #print("Element:", element)
             if element < curr_id:
                 increment += 1
         #print("Increment:", increment)
@@ -1397,8 +1326,6 @@ class Utils:
     def process_dataset(data, train):
 
         # Categories columns may reduce the memory usage but slows groupby operations
-        #print(data.memory_usage(deep=True))
-        #data.info(memory_usage="deep")
         data['id'] = data['id'].astype('int32')
         #data['priority'] = data['priority'].astype('int8')
         data['raised'] = pd.to_datetime(data['raised'], infer_datetime_format=True)
@@ -1428,8 +1355,6 @@ class Utils:
                 data[col] = data[col].astype('category')
                 
             data = data.drop(columns=["inheritance elapsed time", "escalate", 'country', 'init_priority', 'subfamily action', 'wait time'])
-            #print("Extra Train columns:", row_names)            
-            #print("Train data columns:", data.columns)
         else:
             data['temp_allocated'] = data['allocated'] 
             data['temp_allocated_tsp'] = data['allocated_tsp'] 
@@ -1476,9 +1401,7 @@ class Utils:
                 time_shift = random.choice(time_night_shifts)
         else:
             time_shift = np.random.choice(list(distribution_data.family_time_4h.keys()), p = family_time_shifts_probs)
-        
-        #print("Time shift:", time_shift)
-                        
+              
         if distribution_data.distribution_mode == "normal":
             alert_pool[family]["time shift"] = time_shift
             alert_pool[family]["time dev"] = 3
@@ -1491,8 +1414,7 @@ class Utils:
                     week_shift = random.choice(weekend_shifts)
             else:
                 week_shift = np.random.choice(list(distribution_data.week_time.keys()), p = family_week_shifts_probs)  
-            #print("Week shift:", week_shift)
-            
+
             alert_pool[family]["week shift"] = week_shift
             alert_pool[family]["week loc"] = week_shift
             alert_pool[family]["week dev"] = 1
@@ -1512,7 +1434,7 @@ class Utils:
             loc = float(f'{temp[0]}.{temp[1]}')
             alert_pool[family]['time loc'] = loc
                             
-            Utils.debug_code(aux_data.debug, f'Shift Time init: {shift_time_init}, Shift Time end: {shift_time_end}, Hour start: {hours_init}, Hour end: {hours_end + (minutes_end/60)}, Time loc: {alert_pool[family]["time loc"]}, Week loc: {alert_pool[family]["week loc"]}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Shift Time init: {shift_time_init}, Shift Time end: {shift_time_end}, Hour start: {hours_init}, Hour end: {hours_end + (minutes_end/60)}, Time loc: {alert_pool[family]["time loc"]}, Week loc: {alert_pool[family]["week loc"]}')
                 
         alert_pool[family]["extra_features"] = []
         n_extra_features = random.randint(0, max_features)
@@ -1579,9 +1501,6 @@ class Utils:
             else:      
                 distribution_data.family_time_probability_pool[family][time_string] =  random.uniform(0,1)
 
-            #print(f'Time: {time_string} has a prob of {family_time_prob[k][time_string]}')
-            #print(f'Hour: {hour} minute: {minute}')
-            
             minute = minute + 5
             if minute == 60:
                 minute = 0
@@ -1604,7 +1523,7 @@ class Utils:
                 i+= 1
                 #print("I:", i)
             
-        print("Duration:", durations)
+        #print("Duration:", durations)
         return durations
     
     # Divides the tickets for all teams
@@ -1639,8 +1558,7 @@ class Utils:
     # Build subfamily action
     def build_subfamily_action(team, family, subfamily, action, family_steps_pool, aux_data):
 
-        #Utils.log_data(aux_data.logger, f'Team: {team}, family: {family}, subfamily: {subfamily}, family action: {action}')
-        Utils.debug_code(aux_data.debug, f'Team: {team}, family: {family}, subfamily: {subfamily}, family action: {action}')
+        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Team: {team}, family: {family}, subfamily: {subfamily}, family action: {action}')
     
         updated_action = ""
         for i in range(len(action)):
@@ -1648,15 +1566,13 @@ class Utils:
             if ch in family_steps_pool[team][family].keys() and family_steps_pool[team][family][ch] != None:
                 transformations = list(family_steps_pool[team][family][ch].keys())
                 new_ch = "'" + str(random.choice(transformations)) + "'"
-                Utils.debug_code(aux_data.debug, f'Step {ch} can be replace by {list(transformations)}. Step {ch} will be replaced by {new_ch}')
-                #Utils.log_data(aux_data.logger, f'Step {ch} can be replace by {list(transformations)}. Step {ch} will be replaced by {new_ch}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Step {ch} can be replace by {list(transformations)}. Step {ch} will be replaced by {new_ch}')
                 updated_action = f'{updated_action}{new_ch}'
             else:
                 updated_action = f'{updated_action}{ch}'
                 
-        Utils.debug_code(aux_data.debug, f'After converting: {updated_action}')
-        #Utils.log_data(aux_data.logger, f'After converting: {updated_action}')
- 
+        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'After converting: {updated_action}')
+
         #self.subfamily_pool[subfamily]["action"] = updated_action 
         return updated_action 
                 
@@ -1664,11 +1580,9 @@ class Utils:
     def build_subfamily_action_teams(teams_data, family, subfamily, family_actions, family_steps_pool, subfamily_pool, aux_data):
         
         for curr_team in teams_data.keys():
-            #print("Curr team", curr_team)
             sub_action = Utils.build_subfamily_action(curr_team, family, subfamily, family_actions[family]["action"], family_steps_pool, aux_data)
-            #print("Sub action:", sub_action)
             subfamily_pool[subfamily]['teams_actions'][curr_team] = sub_action 
-            #Utils.log_data(aux_data.logger, f'Curr team: {curr_team} - Sub action: {sub_action}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Curr team: {curr_team} - Sub action: {sub_action}')
             
     # Updates the duration of a step from the transition steps
     def update_step_outlier(transitions_dur, outlier_cost):
@@ -1761,10 +1675,8 @@ class Utils:
     # Checks if dataframe is sorted
     def check_dataframe_sorted(data):
         pd.set_option('display.max_rows', None)
-        # Check if the 'Date' column is sorted
         data['raised'] = pd.to_datetime(data['raised'])
         is_sorted = data['raised'].is_monotonic_increasing
-        #print("Is sorted:", is_sorted)
         
         if not is_sorted:
             broken_positions = (data['raised']- data['raised'].shift(1)).dt.total_seconds() < 0
@@ -1774,8 +1686,6 @@ class Utils:
     def plot_dataset_distribution(ticket_dates):
         
         date_counts = Counter(ticket_dates)
-        #print(date_counts)
-        #print(list(date_counts.values()))
         fig, ax = plt.subplots(figsize=(100, 20))
         ax.plot(list(date_counts.keys()), list(date_counts.values()), marker='o', linestyle='-', color='b')
         ax.set_xlabel('Date')
@@ -1818,9 +1728,7 @@ class Utils:
             end_date_datetime = datetime.strptime(end_date, '%d-%m-%Y %H:%M:%S').strftime('%Y-%m-%d')
             
             month_list = pd.date_range(start=start_date_datetime, end=end_date_datetime, freq='MS')
-            #print("mONTHS LIST:", month_list)
             month_list = [month.to_pydatetime().month for month in month_list]
-            #print("Months list:", month_list)
             if len(month_list) < 12:
                 print("Ticket seasonality was canceled because the dates selected don't cover the whole year!")
                 return False
@@ -1875,15 +1783,7 @@ class Utils:
     def generate_date(stime, etime):
         
         ptime = stime + random.random() * (etime - stime)
-        #time_struct_fold_0 = timemodule.gmtime(ptime)
-        #print("ptime:", random.random())
-        #timestamp = timemodule.mktime(timemodule.localtime(ptime))
-        #timestamp = calendar.timegm(time_struct_fold_0)
-        #print("timestamp:", timestamp)
-        #date = datetime.fromtimestamp(timestamp).replace(tzinfo=timezone.utc)
-        #date = datetime.utcfromtimestamp(timestamp)
         timestamp = calendar.timegm(pytz.utc.localize(datetime.utcfromtimestamp(ptime)).utctimetuple())
-        #print("Timestamp:", timestamp)
         date = datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.utc)
         #print("Date:", date)
         
@@ -1917,11 +1817,9 @@ class Utils:
                 while True:   
                     if date.hour >= 8 and date.hour <= 20: 
                         if random_time_prob < time_light_probs:
-                            #print("Aqui light 1")
                             break
                     else:  # Weekend
                         if random_time_prob >= time_light_probs:
-                            #print("Aqui night 1")
                             break 
                     date, timestamp = Utils.generate_date(stime, etime) 
         
@@ -1929,11 +1827,9 @@ class Utils:
                 while True:   
                     if date.weekday() < 5: 
                         if random_week_prob < weekday_prob:
-                            #print("Aqui weekday 2")
                             break
                     else:  # Weekend
                         if random_week_prob >= weekday_prob:
-                            #print("Aqui weekend 2")
                             break
                     date, timestamp = Utils.generate_date(stime, etime)
                     continue
@@ -1950,39 +1846,35 @@ class Utils:
     # Generates a random date in a certain place
     def get_country_data(country, stime, etime, debug, ticket_seasonality_selector, ticket_seasonality_season, weekday_prob, time_light_probs, probabilities_dict, aux_data):  
 
-        #country_timezone = random.choice(country['timezones'])
         new_timestamp, new_date = Utils.validate_date(stime, etime, weekday_prob, time_light_probs, probabilities_dict)
 
-        #local_dt = pendulum.instance(date, tz=country_timezone)
-        #utc_dt = local_dt.in_tz('UTC')
-        #new_timestamp = utc_dt.replace(tzinfo=timezone.utc).timestamp()
-        Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Timestamp generated on {new_date} on {country}')
+        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Timestamp generated on {new_date} on {country}')
 
         if ticket_seasonality_selector:
             months_available = ticket_seasonality_season["months"]
             #print("Months available:", months_available)
         
             while new_date.month not in months_available or new_timestamp > etime or new_timestamp < stime:
-                Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Date rejected {new_date}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Date rejected {new_date}')
                 new_timestamp, new_date = Utils.validate_date(stime, etime, weekday_prob, time_light_probs, probabilities_dict)
         else:
             while new_timestamp > etime or new_timestamp < stime:
-                Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, f'Date rejected {new_date}')
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Date rejected {new_date}')
                 new_timestamp, new_date = Utils.validate_date(stime, etime, weekday_prob, time_light_probs, probabilities_dict)
 
         return new_timestamp, new_date
     
     # Generates a random location (country)
-    def get_country_network(networks, networks_used, debug):
+    def get_country_network(networks, networks_used, aux_data):
 
         random_network = random.choice(networks)
-        Utils.debug_code(debug, "Country of each ticket assigned")
+        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "Country of each ticket assigned")
         #print("Network chosen", random_network)
     
         return random_network
     
     # Gets the family and subfamily of of the ticket according to its time and weekday
-    def get_family_subfamily(alert_pool, sub_alert_pool, distribution_data, ticket, suspicious_data, debug, ip, new_family, new_subfamily, time_slots, families_used, ticket_type):
+    def get_family_subfamily(alert_pool, sub_alert_pool, distribution_data, ticket, suspicious_data, aux_data, ip, new_family, new_subfamily, time_slots, families_used, ticket_type):
 
         ticket_time = '{:02d}:{:02d}'.format(ticket['raised'].hour, ticket['raised'].minute)
         curr_time_slot = Utils.get_current_time_slot(time_slots, ticket_time)        
@@ -1994,36 +1886,25 @@ class Utils:
             ticket_time_probs, ticket_week_probs, ticket_family_probs, family_cumulative = {}, {}, {}, {}
 
             for k in distribution_data.family_time_probability_pool.keys():
-                #print("Family:", k)
                 ticket_time_probs[k] = distribution_data.family_time_probability_pool[k][curr_time_slot]
 
             for q in distribution_data.family_week_probability_pool.keys():
-                #print("Family:", q)
                 ticket_week_probs[q] = distribution_data.family_week_probability_pool[q][day]
                 
             if distribution_data.family_seasonality_selector:
                 for k in alert_pool.keys():
-                    #print("Family:", k)
                     month_ticket_sazonality = distribution_data.family_seasonality[month]
-                    #print("Month:", mon)
-                    #print(month_ticket_sazonality[alert_pool[k]["real_family"]])
                     ticket_family_probs[k] = month_ticket_sazonality[alert_pool[k]["real_family"]]
                         
-            #print("Ticket time options:", ticket_time_probs)
-            #print("Ticket week options:", ticket_week_probs)
-            #print("Ticket season options: ", ticket_family_probs)
             ticket_probs_total = {x: ticket_time_probs.get(x) * ticket_week_probs.get(x) for x in ticket_time_probs}
               
             if distribution_data.family_seasonality_selector:
                 ticket_probs_total = {x: ticket_probs_total.get(x) * ticket_family_probs.get(x) for x in ticket_probs_total}
-        
-            #print("Time and Week and month:", ticket_probs_total)
-            
+
             ticket_probs_sorted = sorted(ticket_probs_total.items(),  key=itemgetter(1))
             
-            #print("All of them sorted: ", ticket_probs_sorted)
             ticket_random = random.uniform(0,  sum(ticket_probs_total.values()))
-            Utils.debug_code(debug, f'Family time options: {ticket_time_probs}\nFamily week options: {ticket_week_probs}\nFamily time options sorted: {ticket_probs_sorted}, Random prob: {ticket_random}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Family time options: {ticket_time_probs}\nFamily week options: {ticket_week_probs}\nFamily time options sorted: {ticket_probs_sorted}, Random prob: {ticket_random}')
         
             prev = 0
             for l in range(0, len(ticket_probs_sorted)):
@@ -2034,9 +1915,8 @@ class Utils:
                 else:
                     prev = prev + ticket_probs_sorted[l][1]
                     family_cumulative[fam] = prev 
-    
-            #print("Aqui", family_cumulative)
-            Utils.debug_code(debug, f'Family cumulative: {family_cumulative}')
+                    
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Family cumulative: {family_cumulative}')
             for t in family_cumulative.keys():
                 if ticket_random < family_cumulative[t]:
                     family = t
@@ -2044,21 +1924,17 @@ class Utils:
                 
             subfamily = random.randint(1, alert_pool[family]["subtypes"])  
             if ticket_type == "test":
-                #print("All Families:", families_used)
                 if family not in families_used["train"]:
-                    Utils.debug_code(debug, f'Family doesnt exist in training data. New family: {family}')
+                    Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Family doesnt exist in training data. New family: {family}')
                     #print("ticket time:", ticket["raised"])
                     ticket["new_family"] = True
                 else:
                     if new_subfamily:
-                        #print("New subfamily:", subfamily)
-                        #print("ticket time:", ticket["raised"])
                         ticket["new_subfamily"] = True
-                        Utils.debug_code(debug, f'SubFamily doesnt exist in training data. SubFamilies used {families_used}')
+                        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'SubFamily doesnt exist in training data. SubFamilies used {families_used}')
 
                         if len(families_used["train"][family]) >= alert_pool[family]["subtypes"]:
                             if family in families_used["test"]:
-                                #print("Already in test")
                                 subfamily = len(families_used["train"][family]) + len(families_used["test"][family])
                             else:
                                 subfamily = len(families_used["train"][family]) + 1
@@ -2074,7 +1950,7 @@ class Utils:
                         subfamily = random.choice(families_used["train"][family])  
 
             subfamily_updated = f'{family}_{subfamily}'  
-            Utils.debug_code(debug, f'Subfamily updated: {subfamily_updated}')
+            Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Subfamily updated: {subfamily_updated}')
         else:
             ticket["new_family"] = True
             family_features_used = []
@@ -2086,11 +1962,9 @@ class Utils:
                 if n_features not in family_features_used:
                     family_features_used.append(n_features)
                     
-            #print("N features used:", family_features_used)
             new_family_features = random.choice([i for i in range(max(family_features_used) + 1, max(family_features_used) + 2) if i not in family_features_used])
-            #print("Max new family features:", new_family_features)
             
-            Utils.instantiate_family(alert_pool, family, 1, new_family_features, distribution_data, debug, ip)
+            Utils.instantiate_family(alert_pool, family, 1, new_family_features, distribution_data, aux_data, ip)
             n_time_slots = (60/5) * 24 
             Utils.assign_family_probabilities(family, alert_pool, n_time_slots, distribution_data)
                 
@@ -2129,20 +2003,15 @@ class Utils:
         return False
     
     # Assigns the destination and source IP and port to a ticket
-    def assign_ticket_ip(with_ip, ticket, clients_info, suspicious_ips, ips_pool, ip_selected_idx, countries, debug, dst_port_type):
+    def assign_ticket_ip(with_ip, ticket, clients_info, suspicious_ips, ips_pool, ip_selected_idx, countries, aux_data, dst_port_type):
         if with_ip:
             source_country = random.choice(list(countries.keys()))
-            src_ip, src_port = Utils.get_source_ip_port(source_country, ticket['suspicious'], countries, suspicious_ips, ips_pool, ip_selected_idx)
-            dst_ip, dst_port = Utils.get_destination_ip_port(clients_info[ticket["client"]][ticket["country"]]["networks"], debug, ips_pool, ip_selected_idx, dst_port_type)
-            ticket['source_ip']= src_ip
-            ticket['source_port']= src_port
-            ticket['destination_ip']= dst_ip
-            ticket['destination_port']= dst_port     
+            ticket['source_ip'], ticket['source_port'] = Utils.get_source_ip_port(source_country, ticket['suspicious'], countries, suspicious_ips, ips_pool, ip_selected_idx)
+            ticket['destination_ip'], ticket['destination_port'] = Utils.get_destination_ip_port(clients_info[ticket["client"]][ticket["country"]]["networks"], aux_data, ips_pool, ip_selected_idx, dst_port_type)   
             
     # Sets the temporaries features  (e.g. "Feature_1) to 1 (existent)
     def set_extra_features_values(ticket, family_features):
         
-        #print("Aqui:", family_features)
         for f in family_features:
             if f not in ticket:
                 ticket[f] = 1
@@ -2300,17 +2169,16 @@ class Utils:
         return new_family
     
     # Generates the IP and Port of Source Country
+    ## Port 0-1023 – Well known ports (server services by the Internet)
+    ## Ports 1024-49151 - Registered Port (semi-served ports)
+    ## Ports 49152-65535 - free to use by client programs (ephemeral ports)
+    ## Source in the last
+    ## Generates the Ports  
     def get_source_ip_port(country, suspicious, countries, suspicious_ips, ips_pool, ip_selected_idx):
-        # Port 0-1023 – Well known ports (server services by the Internet)
-        # Ports 1024-49151 - Registered Port (semi-served ports)
-        # Ports 49152-65535 - free to use by client programs (ephemeral ports)
-        # Source in the last
-        # Generates the Ports  
-    
+
         if not suspicious:
             ips_network_available = countries[country]["ips"]
             random_network = random.choice(ips_network_available)
-            #print("The time difference is :", timeit.default_timer() - starttime)
             net = ipaddress.IPv4Network(random_network)
             random_ip_index = random.randint(0, net.num_addresses -1)
             random_ip = net[random_ip_index]
@@ -2327,7 +2195,7 @@ class Utils:
         return random_ip, src_port
 
     # Generates the IP and Port of Destination Country
-    def get_destination_ip_port(client_network, debug, ips_pool, ip_selected_idx, dst_port_type):
+    def get_destination_ip_port(client_network, aux_data, ips_pool, ip_selected_idx, dst_port_type):
 
         random_network = random.choice(client_network)
         net = ipaddress.IPv4Network(random_network)
@@ -2335,21 +2203,18 @@ class Utils:
         random_ip_index = random.randint(0, net.num_addresses -1)
         random_ip = net[random_ip_index]
         
-        Utils.debug_code(debug, f'Network {net} has an range of {net.num_addresses}, Ip index: {random_ip_index}')
+        Utils.debug_and_log_data(aux_data.debug, aux_data.logger, f'Network {net} has an range of {net.num_addresses}, Ip index: {random_ip_index}')
         
         if ips_pool[ip_selected_idx] == "IPv6Address":
             random_ip = ipaddress.IPv6Address(f'2002::{random_ip}').compressed
             #print("Ip converted to IPv6")
             
-        #print("Destination Port Type:", dst_port_type)
         dst_port_type = next(dst_port_type.generate())
 
         if dst_port_type == "well-known":
             dst_port = random.randint(0, 1023)
-            #print("Destination Port:", dst_port)
         else:
             dst_port = random.randint(1024, 49151)
-            #print("Destination Port:", dst_port)
         return random_ip, dst_port
     
     #Gets the subtechniques of each step of the family action
@@ -2396,7 +2261,6 @@ class Utils:
             save_info[team], save_info[team]["analysts"] = {}, {}
 
             temp_team_users = list(generation_params["analysts_skills"][team]["analysts"].keys())
-            #print("Team analysts:", temp_team_users)
             if existent_users:
                 temp_users =  list(set(temp_team_users) - set(existent_users))
                 for i in temp_users:
@@ -2407,20 +2271,16 @@ class Utils:
             else:
                 team_shuffled = random.sample(temp_team_users, len(temp_team_users))
             
-            Utils.debug_code(generation_params["debug"], f'Team {team}. Members: {team_shuffled}')
-            #Utils.log_data(logger, f'Team {team}. Members: {team_shuffled}')
+            Utils.debug_and_log_data(generation_params["debug"], logger, f'Team {team}. Members: {team_shuffled}')
             
             for member in team_shuffled:
                 if member not in analysts_info[team]["analysts"].keys():
-                    #print("Analyst:", member)
                     existent_users.append(member)
                     if member not in users_treated:
-                        #print(f'{member} has no shift assigned')
                         users_treated[member] = {}
-                        shift_index = Utils.pick_shifts(shifts_picked, generation_params, shifts)
+                        shift_index = Utils.pick_shifts(shifts_picked, generation_params, shifts, logger)
                         users_treated[member]["shift"] = shift_index
                     else:
-                        #print(f'{member} already with shift assigned')
                         shift_index = users_treated[member]["shift"]
                         
                     if shift_index not in shifts_picked:
@@ -2429,7 +2289,6 @@ class Utils:
                         shifts_picked[shift_index] += 1
                         
                     growth = round(random.uniform(1, 2), 2)
-                    #min_steps = random.randint(1, 3)
                     refusal_rate = round(random.uniform(0.1, 0.8), 2)
                     
                     start_date = datetime.utcfromtimestamp(0).replace(tzinfo=pytz.utc)
@@ -2437,61 +2296,51 @@ class Utils:
                     Utils.update_data(analysts_info[team]["analysts"][member], shift = shift_index, growth = growth, refusal_rate = refusal_rate, assigned_ticket = None, fixed = start_date, fixed_tsp = 0, summary = {}, active = True)
                     Utils.update_data(save_info[team]["analysts"][member], shift = shift_index, growth = growth, refusal_rate = refusal_rate, active = True)
                     
-                    Utils.debug_code(generation_params["debug"], f'Shifts used: {shifts_picked}')
+                    Utils.debug_and_log_data(generation_params["debug"], logger, f'Shifts used: {shifts_picked}')
                 else:
                     shifts_picked[analysts_info[team]["analysts"][member]["shift"]] += 1
-                    Utils.debug_code(generation_params["debug"], f'Analyst shift already assigned. Shifts used: {shifts_picked}')
+                    Utils.debug_and_log_data(generation_params["debug"], logger, f'Analyst shift already assigned. Shifts used: {shifts_picked}')
         
             shifts_picked = {}
             
-        #Utils.log_data(logger, f'Teams Data: {analysts_info}')
-        Utils.debug_code(generation_params["debug"], "All analysts shifts assigned")
-        #print("Save info:", save_info)
-        #sys.exit()
+        Utils.debug_and_log_data(generation_params["debug"], logger, "All analysts shifts assigned")
+
         return analysts_info, save_info
     
     # Get the shift to be fill in by an operator
-    def pick_shifts(shifts_used, generation_params, shifts_data):
+    def pick_shifts(shifts_used, generation_params, shifts_data, logger):
     
         shift_index = -1
-        #print("shifts used:", shifts_used)
         if generation_params["balanced_shifts"]:
             shifts_remaining = []
             for i in shifts_data.keys():
                 if i not in shifts_used:
                     shifts_remaining.append(i)
                 
-            Utils.debug_code(generation_params["debug"], f'Remaining Shifts: {shifts_remaining}')
+            Utils.debug_and_log_data(generation_params["debug"], logger, f'Remaining Shifts: {shifts_remaining}')
             if not shifts_remaining:
                 shift_index = min(shifts_used, key=shifts_used.get)
-                #shift_index = random.randint(0, len(Variables.shifts.keys())-1)
             else:
                 shift_index = random.choice(shifts_remaining)
         else:
             shift_index = random.randint(0, len(shifts_data.keys())-1)
     
-        Utils.debug_code(generation_params["debug"], f'Shift index picked: {shift_index}')
+        Utils.debug_and_log_data(generation_params["debug"], logger, f'Shift index picked: {shift_index}')
         return shift_index
     
     # Get the probabilities of occuring during a weekday or weekend and during the day or night
     def get_shift_data(distribution_data):
         
+        family_time_shifts_probs, family_week_shifts_probs = [], []
         family_time_shifts = distribution_data.family_time_4h.keys()
-        family_time_shifts_probs = []
         family_week_shifts = distribution_data.week_time.keys()
-        family_week_shifts_probs = []
+
         for i in family_time_shifts:
             family_time_shifts_probs.append(distribution_data.family_time_4h[i]['prob'])
             
         for l in family_week_shifts:
             family_week_shifts_probs.append(distribution_data.week_time[l]['prob'])
-              
-# =============================================================================
-#         for k in Variables.incident_area.keys():
-#             for j in Variables.incident_area[k].keys():
-#                 family_area[Variables.incident_area[k][j]['type']] = Variables.incident_area[k][j]['prob']
-# =============================================================================
-        
+
         weekday_shifts = [0, 1, 2, 3, 4]
         weekend_shifts = [5, 6]
         weekday_probs = family_week_shifts_probs[0] + family_week_shifts_probs[1] + family_week_shifts_probs[2] + family_week_shifts_probs[3] + family_week_shifts_probs[4]
@@ -2512,9 +2361,9 @@ class Utils:
                 # print("Escalated")
                 tickets_data[ticket_id]["replication_status"] = "Escalation"
                 tickets_data[ticket_id]["status"] = "Transfer"
-                Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, "To replicate due to escalation")
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "To replicate due to escalation")
             else:
-                Utils.debug_and_log_data(aux_data.debug, aux_data.logger_active, aux_data.logger, "Can't be replicated because it is already on the top team")
+                Utils.debug_and_log_data(aux_data.debug, aux_data.logger, "Can't be replicated because it is already on the top team")
         else:
             if ticket_similarity_selector:
                 if tickets_data[ticket_id]["replication_status"] == None:

@@ -146,7 +146,8 @@ class InterfaceUtils:
         line_edit = QLineEdit()
         line_edit.setText(text)
         line_edit.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-        line_edit.setFont(font)
+        if font != None: 
+            line_edit.setFont(font)
         if object_name != None:
             line_edit.setObjectName(object_name)
         if validator != None:    

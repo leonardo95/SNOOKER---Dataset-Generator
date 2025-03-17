@@ -6,8 +6,7 @@ from Code.InterfaceUtils import InterfaceUtils
 from Code.Utils import Utils
 from Code.Generator.DatasetGenerator import DatasetGenerator
 
-#import pandas as pd
-import string, sys, os#, psutil
+import string, sys, os
 from datetime import datetime
 from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, QTime, QThreadPool
 from PyQt5 import QtGui, QtCore
@@ -23,7 +22,6 @@ from PyQt5.QtWidgets import (
     QDesktopWidget,
     QPushButton,
     QRadioButton,
-    QSpinBox,
     QVBoxLayout,
     QHBoxLayout,
     QGridLayout,
@@ -319,10 +317,9 @@ class SNOOKER(QMainWindow):
         seed_label = QLabel("Seed:")
         seed_layout.addWidget(seed_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         
-        self.seed_spinbox = QSpinBox()
-        self.seed_spinbox.setValue(self.generation_params["seed"])
-        self.seed_spinbox.valueChanged.connect(lambda:Utils.update_seed(self.seed_spinbox, self.generation_params["seed"]))
-        seed_layout.addWidget(self.seed_spinbox, alignment=Qt.AlignLeft | Qt.AlignVCenter)
+        self.seed_edit = InterfaceUtils.create_linedit(str(self.generation_params["seed"]), "seed", QtGui.QIntValidator(1, 10000000), None)
+        self.seed_edit.setMaximumWidth(50)
+        seed_layout.addWidget(self.seed_edit, alignment=Qt.AlignLeft | Qt.AlignVCenter)
         
         logger_box = InterfaceUtils.create_checkbox("Log Data", "log_data", self.generation_params["logger_active"])
         logger_box.stateChanged.connect(lambda state, sender=logger_box: self.update_loggers(state, sender))
@@ -331,14 +328,12 @@ class SNOOKER(QMainWindow):
         load_files_layout.addWidget(logger_box, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         
         other_options_layout = QHBoxLayout()
-        #debug_layout = QHBoxLayout()
         debug_label = QLabel("Debug:")
         load_files_layout.addWidget(debug_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         
         self.debug_toggle = InterfaceUtils.create_toogle(self.generation_params["debug"])
         self.debug_toggle.stateChanged.connect(self.pick_debug_method)
         load_files_layout.addWidget(self.debug_toggle, alignment=Qt.AlignLeft | Qt.AlignVCenter) 
-        #other_options_layout.addLayout(debug_layout)
                 
         format_layout = QHBoxLayout()
         format_label = QLabel("Output Format:")
@@ -451,16 +446,13 @@ class SNOOKER(QMainWindow):
         escalation_widget.setLayout(escalation_layout)
         escalate_label = QLabel("Escalation Probability:", self)
         
-        escalation_layout_content = QHBoxLayout()
-        self.escalation_slider = InterfaceUtils.create_slider(Qt.Horizontal, 1, 5, self.generation_params["escalate_rate_percentage"], 1)
-        self.escalation_rate_label = QLabel(f'Rate: {self.escalation_slider.value()} %', self)
+        self.escalation_slider = InterfaceUtils.create_doublespin(self, 0, 0.5, 0.1, self.generation_params["escalate_rate_percentage"])
+        self.escalation_slider.setMaximumWidth(100)
+        self.escalation_slider.valueChanged.connect(self.update_escalation_rate)
         
-        escalation_layout_content.addWidget(self.escalation_slider)
-        escalation_layout_content.addWidget(self.escalation_rate_label)
-        escalation_layout.addWidget(escalate_label, alignment = Qt.AlignRight | Qt.AlignVCenter)
-        escalation_layout.addLayout(escalation_layout_content)
+        escalation_layout.addWidget(escalate_label, alignment = Qt.AlignLeft | Qt.AlignVCenter)
+        escalation_layout.addWidget(self.escalation_slider, alignment = Qt.AlignLeft | Qt.AlignVCenter)
         
-        self.escalation_slider.sliderReleased.connect(self.update_escalation_rate)
         self.ticket_escalation_toggle.stateChanged.connect(lambda:self.pick_escalation_method(escalation_widget))
         
         ticket_season_layout = QHBoxLayout()
@@ -501,29 +493,21 @@ class SNOOKER(QMainWindow):
         new_family_label = QLabel("New Family Likelihood:", self)
         new_family_layout.addWidget(new_family_label, alignment = Qt.AlignRight | Qt.AlignVCenter)
         
-        family_content = QHBoxLayout()
-        self.family_slider = InterfaceUtils.create_slider(Qt.Horizontal, 5, 10, self.generation_params["family_rate_percentage"], 1)
-        self.family_rate_label = QLabel(f'Rate: {self.generation_params["family_rate_percentage"]:.1f}%', self)
-        self.family_slider.sliderReleased.connect(self.update_new_family_rate)
-        
-        family_content.addWidget(self.family_slider)
-        family_content.addWidget(self.family_rate_label)
-        new_family_layout.addLayout(family_content)
+        self.family_slider = InterfaceUtils.create_doublespin(self, 0, 0.4, 0.1, self.generation_params["family_rate_percentage"])
+        self.family_slider.setMaximumWidth(100)
+        self.family_slider.valueChanged.connect(self.update_new_family_rate)
+        new_family_layout.addWidget(self.family_slider, alignment = Qt.AlignLeft | Qt.AlignVCenter)
         
         subfamily_widget = QWidget()
         new_subfamily_layout = QHBoxLayout()
         subfamily_widget.setLayout(new_subfamily_layout)
         subfamily_label = QLabel("New Subfamily Likelihood:", self)
-        new_subfamily_layout.addWidget(subfamily_label, alignment = Qt.AlignRight | Qt.AlignVCenter)
-        
-        subfamily_content = QHBoxLayout()
-        self.subfamily_slider = InterfaceUtils.create_slider(Qt.Horizontal, 8, 10, self.generation_params["subfamily_rate_percentage"], 1)
-        self.subfamily_rate_label = QLabel(f'Rate: {self.generation_params["subfamily_rate_percentage"]:.1f} %', self)
-        self.subfamily_slider.sliderReleased.connect(self.update_new_subfamily_rate)
-        
-        subfamily_content.addWidget(self.subfamily_slider)
-        subfamily_content.addWidget(self.subfamily_rate_label)
-        new_subfamily_layout.addLayout(subfamily_content)
+        new_subfamily_layout.addWidget(subfamily_label, alignment = Qt.AlignLeft | Qt.AlignVCenter)
+
+        self.subfamily_slider = InterfaceUtils.create_doublespin(self, 0, 0.4, 0.1, self.generation_params["subfamily_rate_percentage"])
+        self.subfamily_slider.setMaximumWidth(100)
+        self.subfamily_slider.valueChanged.connect(self.update_new_subfamily_rate)
+        new_subfamily_layout.addWidget(self.subfamily_slider, alignment = Qt.AlignLeft | Qt.AlignVCenter)
         
         grid.addLayout(train_ticket_number_layout, 0, 0)
         grid.addLayout(date_layout_init, 1, 0)

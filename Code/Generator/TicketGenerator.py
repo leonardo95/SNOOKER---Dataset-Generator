@@ -37,7 +37,7 @@ class SuspiciousData:
 
 class TicketGenerator:
     # Initiates essential dictionaries and other relevenat params for ticket generation
-    def __init__(self, gen_id, domain, generation_params, logger, logger_active):
+    def __init__(self, gen_id, domain, generation_params, logger):
         
         self._id = gen_id
         self.train_tickets, self.test_tickets, self.clients_info, self.family_steps_pool, self.subfamily_pool = {}, {}, {}, {}, {}
@@ -83,16 +83,16 @@ class TicketGenerator:
         
         self.suspicious_data = SuspiciousData(generation_params["suspicious_countries"], generation_params["suspicious_subfamily"], generation_params["min_coordinated_attack"], generation_params["max_coordinated_attack"], generation_params["min_coordinated_attack_minutes"], generation_params["max_coordinated_attack_minutes"], generation_params["suspicious_ips"])
         self.distribution_data = DistributionData(generation_params["ticket_seasonality_selector"], generation_params["ticket_seasonality"], generation_params["family_seasonality_selector"], generation_params["family_seasonality"], generation_params["family_time_4h"], generation_params["week_time"], generation_params["distribution_mode"], generation_params["time_equal_probabilities"], generation_params["week_equal_probabilities"])
-        self.aux_data = UtilsParams(generation_params["outlier_rate"], generation_params["outlier_cost"], generation_params["action_operations"], generation_params["max_priority_levels"], generation_params["debug"], logger, logger_active)
+        self.aux_data = UtilsParams(generation_params["outlier_rate"], generation_params["outlier_cost"], generation_params["action_operations"], generation_params["max_priority_levels"], generation_params["debug"], logger)
         
     # Generates the pool of families to reduce the execution time
     def get_families_probabilities(self, thread_canceled, family_mapping, weight, max_features):
 
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "\nGet Families Probabilities")
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "\nGet Families Probabilities")
         alert_pool = {}
 
         if self.family_selection == "Random":
-            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "Using Random Family Selection")
+            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "Using Random Family Selection")
             if family_mapping != None:
                 families_selected = Utils.get_first_n_elements(family_mapping, self.family_number)
             else:
@@ -100,12 +100,12 @@ class TicketGenerator:
                 families_selected = Utils.get_first_n_elements(self.family_pool, self.family_number)
             print("families selected:", families_selected)
         else:
-            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "Using Customized Family Selection")
+            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "Using Customized Family Selection")
             families_selected = self.family_selection.split(" - ")
             print(families_selected)
 
         if self.use_default_family:
-            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "Using Default families")
+            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "Using Default families")
             for fam in families_selected:
                 alert_pool[fam] = {}
                 Utils.copy_dict(alert_pool[fam], self.family_pool[fam])
@@ -123,7 +123,7 @@ class TicketGenerator:
                     # The chance of a family having an associated IP is 30% (chosen by me)
                     alert_pool[fam]["ip"] = np.random.choice([True, False], p=[0.3, 0.7])
         else:
-            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "Using New Families")
+            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "Using New Families")
             for fam in families_selected:
                 if not thread_canceled:
                     if fam not in alert_pool.keys():
@@ -188,7 +188,7 @@ class TicketGenerator:
             #print(f'Step {step} is not locked')
             self.family_steps_pool[team][family][step] = {}
             
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Step {step} is not locked')
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Step {step} is not locked')
 
         if build_subtechniques:
             sub_techniques = []
@@ -205,7 +205,7 @@ class TicketGenerator:
                 locked_techniques_pool = sub_techniques + locked
 
                 while str(hex_technique) in locked_techniques_pool:
-                    Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'The technique {hex_technique} already exists. Try another')
+                    Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'The technique {hex_technique} already exists. Try another')
                     int_technique = random.randint(0, 255)
                     hex_technique = hex(int_technique)[2:]
 
@@ -214,22 +214,22 @@ class TicketGenerator:
                 if self.techniques_seasonality_selector:
                     step_cost = intermediary_subtechniques_dur[i]
                     self.family_steps_pool[team][family][step][hex_technique] = step_cost
-                    Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Step {step} - Subtechnique accepted {hex_technique} with dur {step_cost}')
+                    Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Step {step} - Subtechnique accepted {hex_technique} with dur {step_cost}')
                 else:
                     step_cost = random.randint(self.min_subtechnique_cost, self.max_subtechnique_cost)
                     multiplier = random.randint(self.min_subtechnique_rate, self.max_subtechnique_rate)
                     step_multiplied = int(step_cost * multiplier/100)
                     self.family_steps_pool[team][family][step][hex_technique] = step_multiplied
-                    Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Step {step} - Multiplier: {multiplier}. Multiplier Converted: {step_multiplied}')
+                    Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Step {step} - Multiplier: {multiplier}. Multiplier Converted: {step_multiplied}')
 
-            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'The step {step} has the following techniques: {self.family_steps_pool[team][family][step]}')
+            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'The step {step} has the following techniques: {self.family_steps_pool[team][family][step]}')
 
     # Based on probabilities, each technique is assigned a set of subtechniques
     def process_action(self, family, action, sub_techniques_range, intermediary_main_steps, locked_techniques):
 
         if self.techniques_seasonality_selector:
             locked_duration_steps = Utils.get_locked_techniques_duration(self.special_steps)
-            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'With techniques seasonality. lock techniques total dur: {locked_duration_steps}')
+            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'With techniques seasonality. lock techniques total dur: {locked_duration_steps}')
 
         for team in list(self.analysts_info.keys()):    
             if team not in self.family_steps_pool:
@@ -248,10 +248,10 @@ class TicketGenerator:
                     print("Locked techniques are below mean family")
                     real_family_duration -= locked_duration_steps
                 intermediary_techniques_dur = Utils.split_actions_dur(real_family_duration, intermediary_main_steps, sub_techniques_range[1])
-                Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Real family: {real_family} - Mean duration: {real_family_duration}\nSubtechniques range: {sub_techniques_range}, Intermediary techniques duration: {intermediary_techniques_dur}')
+                Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Real family: {real_family} - Mean duration: {real_family_duration}\nSubtechniques range: {sub_techniques_range}, Intermediary techniques duration: {intermediary_techniques_dur}')
             
             for step in action:
-                Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Step {step} is being analysed')
+                Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Step {step} is being analysed')
                 if step not in self.family_steps_pool[team][family].keys(): 
                     self.process_step(team, family, step, sub_techniques_range, intermediary_techniques_dur, locked_techniques)
 
@@ -265,16 +265,16 @@ class TicketGenerator:
         if length > 1:
             techniques_selected = random.sample([tec for tec in techniques_pool if tec not in locked_techniques], k=(self.techniques_number-2))
         else:
-            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "Length less than 2!")
+            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "Length less than 2!")
             techniques_selected = random.sample([tec for tec in string.ascii_letters if tec not in locked_techniques], k=(self.techniques_number-2))
         
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Techniques num: {self.techniques_number}, Techniques selected: {techniques_selected}. First technique: {init_technique_chosen}, End technique: {end_technique_chosen}, Length: {length}')
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Techniques num: {self.techniques_number}, Techniques selected: {techniques_selected}. First technique: {init_technique_chosen}, End technique: {end_technique_chosen}, Length: {length}')
 
         action_result = str(init_technique_chosen)
         middle_actions = []
         if length > self.techniques_number:
             middle_actions = random.choices(techniques_selected, k=(length-2))
-            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "Repeated steps included since length is greater than the number of techniques available") 
+            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "Repeated steps included since length is greater than the number of techniques available") 
         else:
             middle_actions = random.sample(techniques_selected, k=(length-2))
 
@@ -283,7 +283,7 @@ class TicketGenerator:
         action_result = f'{action_result}{end_technique_chosen}'
         #print("Action result:", action_result)
 
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'The family {family} has the action: {action_result}') 
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'The family {family} has the action: {action_result}') 
         self.process_action(family, action_result, sub_techniques_range, middle_actions, locked_techniques)
 
         return action_result
@@ -307,12 +307,12 @@ class TicketGenerator:
         action = self.build_action(family, length, sub_techniques_range, locked_techniques)
         self.family_pool[family]["action"] = action
 
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "Action of each family assigned") 
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "Action of each family assigned") 
 
     # Main action generator
     def generate_actions(self, thread_canceled, weight, dataset_type, with_real):
 
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'\nGenerate actions for {dataset_type} dataset') 
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'\nGenerate actions for {dataset_type} dataset') 
 
         first_team = list(self.analysts_info.keys())[0]
         if dataset_type == "train":
@@ -322,10 +322,10 @@ class TicketGenerator:
             dataset = self.test_tickets[first_team]
             
         locked_techniques = Utils.get_locked_techniques(self.special_steps)
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Locked techniques: {locked_techniques}') 
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Locked techniques: {locked_techniques}') 
 
         for i in dataset.keys():
-            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Ticket id: {i}') 
+            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Ticket id: {i}') 
             subfamily = dataset[i]["subfamily"]            
             dataset[i]['team'] = self.subfamily_pool[subfamily]["assigned team"]
             if dataset[i]['team'] == list(self.teams_frequency.keys())[-1]:
@@ -338,22 +338,22 @@ class TicketGenerator:
                 sub_techniques_range.append(self.max_subtechniques_number)
                 self.build_family_subfamily_actions(dataset[i]["family"], subfamily, sub_techniques_range, locked_techniques)
 
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'All actions generated for the families and subfamilies of {dataset_type} tickets') 
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'All actions generated for the families and subfamilies of {dataset_type} tickets') 
 
     # Checks if a subfamily has an already allocated. If not it generates a new one
     def build_family_subfamily_actions(self, family, subfamily, sub_techniques_range, locked_techniques):
 
         if "action" not in self.family_pool[family].keys():
-            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Family {family} does not have an action') 
+            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Family {family} does not have an action') 
             self.build_family_action(family, sub_techniques_range, locked_techniques)
         else:
-            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Family {family} action already exists') 
+            Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Family {family} action already exists') 
 
         if subfamily in self.subfamily_pool:
             if self.subfamily_pool[subfamily]['teams_actions']:
-                Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Sub actions for teams on {subfamily} already exists')
+                Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Sub actions for teams on {subfamily} already exists')
             else:
-                Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, f'Sub actions for teams on {subfamily} does not exist')
+                Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Sub actions for teams on {subfamily} does not exist')
                 Utils.build_subfamily_action_teams(self.analysts_info, family, subfamily, self.family_pool, self.family_steps_pool, self.subfamily_pool, self.aux_data)
 
     # Gets the timestamps of each action step
@@ -375,7 +375,7 @@ class TicketGenerator:
     # Outputs the train dataset
     def output_train_dataset(self, thread_canceled, weight, format_idx, dataset_params, actions_similarity, family_mapping, show_plots, family_subtechniques):
 
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "Train Ticket Analysis")
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "Train Ticket Analysis")
         extra_feat = Utils.get_extra_features_used(self.family_pool)
 
         ticket_ids, ticket_priority, ticket_int_priority, ticket_prioritized, ticket_escalate, clients= [], [], [], [], [], []
@@ -575,7 +575,7 @@ class TicketGenerator:
 
         dataset = Utils.format_generation_datasets(data, output_path, format_idx, dataset_params, extra_feat)
         #Utils.check_dataframe_sorted(dataset)
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "Train Tickets outputted")
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "Train Tickets outputted")
         
         self.plot_daily_distribution(dataset)
         self.plot_weekly_distribution(dataset)
@@ -590,7 +590,7 @@ class TicketGenerator:
     # # Outputs the test dataset
     def output_test_dataset(self, thread_canceled, weight, format_idx, status):
 
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "Test Tickets analysis")
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "Test Tickets analysis")
         extra_feat = Utils.get_extra_features_used(self.family_pool)
 
         ticket_ids, ticket_priority, ticket_int_priority, clients = [], [], [], []
@@ -808,7 +808,7 @@ class TicketGenerator:
         wait_time, curr_time = Utils.get_function_time_spent(initial_time)
         #average_ticket_time = wait_time / total_tickets
         #print("Average Time to generate a ticket:", average_ticket_time, "seconds")
-        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger_active, self.aux_data.logger, "All tickets created")
+        Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, "All tickets created")
     
     # Assigns preliminary data to new tickets
     def assign_ticket_preliminary_data(self, thread_canceled, n_tickets, stime, etime, countries_chosen, countries_data, seasons_choices, clients, outlier_choices, escalate_choices, networks_used, weekday_probs, time_light_probs, probabilities_dict, dataset_type):
@@ -861,7 +861,7 @@ class TicketGenerator:
                     self.clients_info[clients[i]][country], self.clients_info[clients[i]][country]["ips"] = {}, {}
                     self.clients_info[clients[i]][country]["networks"] = []
     
-                network = Utils.get_country_network(countries_data[country]['ips'], networks_used, self.aux_data.debug)
+                network = Utils.get_country_network(countries_data[country]['ips'], networks_used, self.aux_data)
                 networks_used.append(network)
                 self.clients_info[clients[i]][country]["networks"].append(network)
                 
@@ -892,7 +892,7 @@ class TicketGenerator:
                 self.distribution_data.family_seasonality_selector = False
             
             if self.distribution_data.distribution_mode == "normal":
-                Utils.get_family_subfamily(self.family_pool, self.subfamily_pool, self.distribution_data, ordered_tickets[l], self.suspicious_data, self.aux_data.debug, self.ip_selector, new_family, new_subfamily, time_slots, families_used, dataset_type)
+                Utils.get_family_subfamily(self.family_pool, self.subfamily_pool, self.distribution_data, ordered_tickets[l], self.suspicious_data, self.aux_data, self.ip_selector, new_family, new_subfamily, time_slots, families_used, dataset_type)
             else:
                 family = random.choice(list(self.family_pool.keys()))
                 ordered_tickets[l]["family"] = family
@@ -922,7 +922,7 @@ class TicketGenerator:
         ticket['priority'] = self.family_pool[family]["priority"]
         ticket['extra_features'] = self.family_pool[family]["extra_features"]
 
-        Utils.assign_ticket_ip(self.family_pool[family]["ip"], ticket, self.clients_info, self.suspicious_data.suspicious_ips, self.ips_pool, self.ip_selected_idx, countries, self.aux_data.debug, dst_port_type)
+        Utils.assign_ticket_ip(self.family_pool[family]["ip"], ticket, self.clients_info, self.suspicious_data.suspicious_ips, self.ips_pool, self.ip_selected_idx, countries, self.aux_data, dst_port_type)
         
     # Gets the wait time of the tickets shifted for later date
     def get_tickets_shifted_wait_time(self, team_analytics, tickets_number, wait_times, resolution_times, dataset):
