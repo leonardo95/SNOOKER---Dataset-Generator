@@ -6,15 +6,7 @@ from datetime import datetime
 import pendulum
 import numpy as np
 
-class Configurator:
-    
-    # Checks if the configuration file path exists
-    def check_configuration_path(domain):
-        
-        path = f'Configurations/{domain}/Init_cfg.yaml'
-        if os.path.exists(path):
-            return True
-    
+class Configurator:    
     # Reads the configuration file
     def read_configuration_file(domain, path):
         
@@ -121,7 +113,7 @@ class Configurator:
             raise ValueError(f"Invalid ticket growth operation! Options are {growth_operations}")
         
         print("Cybersecurity configuration file successfully loaded!") 
-        print(suspicious_countries)
+        #print(suspicious_countries)
 
         return interface_params, generation_params, treatment_params, suspicious_countries
         
@@ -240,11 +232,9 @@ class Configurator:
     def convert_timestamps(list_):
         
         temp = []
-        #print("list:", list_)
         if len(list_) != 1:
             for k in list_:
                 try:
-                    #print(k)
                     dt_object = pendulum.from_timestamp(int(float(k)))
                     temp.append(dt_object.replace(tzinfo=None))
                 except:
@@ -264,17 +254,14 @@ class Configurator:
             result = Configurator.convert_timestamps(result)
             if not result:
                 print("Entry removed!")
-                #print(result)
                 result = 0
         return result
     
     # Fixes null timestamps
     def solve_timestamp_anomalies(dataset, temp_dict, subfamilies_mean):
 
-        ticket_durations = []
-        raised = []
+        raised, ticket_durations = [], []
 
-        #temp_dict = dataset.to_dict("index")
         for i in temp_dict:
             if temp_dict[i]['Steps'] == -1:
                 #print(temp_dict[i])
@@ -318,7 +305,6 @@ class Configurator:
         
         for i in temp_dict:
             if temp_dict[i]["Steps"] != -1:
-                #print("Aqui")
                 subfamily = temp_dict[i]["Subfamily"]
                 if subfamily not in subfamilies_mean:
                     subfamilies_mean[subfamily] = {}
@@ -505,33 +491,3 @@ class Configurator:
 
         print("Special Operations:", special_steps)
         return special_steps
-        
-    # Reads the train and test datasets
-    def read_generated_datasets(path):
-        
-        gen_id = Utils.get_most_recent_generation_id(path)
-        print("Generation id found:", gen_id)
-    
-        if gen_id != None:
-            files = os.listdir(path)
-            filename = f'trainDataset_{gen_id}'
-            matching_files = [file for file in files if file.startswith(filename)]
-            file_extensions = [os.path.splitext(file)[1] for file in matching_files]
-            #print("File extensions:", file_extensions)
-            
-            training_data_path = f'{path}trainDataset_{gen_id}{file_extensions[0]}'
-            test_data_path = f'{path}testDataset_unsolved_{gen_id}{file_extensions[0]}'
-            
-            if file_extensions[0] == ".csv":
-                train_df = pd.read_csv(training_data_path, sep=";")
-                test_df = pd.read_csv(test_data_path, sep=";")
-            else:
-                train_df = pd.read_excel(training_data_path)
-                test_df = pd.read_excel(test_data_path)
-                
-            train_df = Utils.process_dataset(train_df, True)
-            test_df = Utils.process_dataset(test_df, False)
-            return train_df, test_df, gen_id
-        else:
-            print("No Training and Test files were found")
-            return pd.DataFrame(), pd.DataFrame(), gen_id

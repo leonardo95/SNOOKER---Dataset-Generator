@@ -68,81 +68,81 @@ teams_info_pool:
 analysts_info:
   L1:
     analysts:
-      Analyst_7:
-        shift: 0
-        growth: 1.28
-        refusal_rate: 0.35
-        active: true
       Analyst_2:
-        shift: 1
-        growth: 1.19
-        refusal_rate: 0.27
-        active: true
-      Analyst_4:
-        shift: 2
-        growth: 1.37
-        refusal_rate: 0.57
-        active: true
-      Analyst_9:
         shift: 0
-        growth: 1.82
-        refusal_rate: 0.42
+        growth: 1.59
+        refusal_rate: 0.79
         active: true
       Analyst_1:
-        shift: 1
-        growth: 1.71
-        refusal_rate: 0.62
-        active: true
-      Analyst_5:
         shift: 2
-        growth: 1.11
-        refusal_rate: 0.61
+        growth: 1.45
+        refusal_rate: 0.72
+        active: true
+      Analyst_7:
+        shift: 1
+        growth: 1.7
+        refusal_rate: 0.8
         active: true
       Analyst_8:
         shift: 0
-        growth: 1.76
-        refusal_rate: 0.71
+        growth: 1.02
+        refusal_rate: 0.42
+        active: true
+      Analyst_4:
+        shift: 2
+        growth: 1.44
+        refusal_rate: 0.42
         active: true
       Analyst_3:
         shift: 1
+        growth: 1.82
+        refusal_rate: 0.21
+        active: true
+      Analyst_9:
+        shift: 0
         growth: 1.21
-        refusal_rate: 0.34
+        refusal_rate: 0.33
         active: true
       Analyst_6:
         shift: 2
-        growth: 1.43
-        refusal_rate: 0.59
+        growth: 1.6
+        refusal_rate: 0.66
+        active: true
+      Analyst_5:
+        shift: 1
+        growth: 1.79
+        refusal_rate: 0.54
         active: true
   L2:
     analysts:
       Analyst_11:
-        shift: 0
-        growth: 1.06
-        refusal_rate: 0.17
+        shift: 1
+        growth: 1.43
+        refusal_rate: 0.39
         active: true
       Analyst_13:
         shift: 2
-        growth: 1.56
-        refusal_rate: 0.2
+        growth: 1.13
+        refusal_rate: 0.29
         active: true
       Analyst_12:
-        shift: 1
-        growth: 1.36
-        refusal_rate: 0.16
+        shift: 0
+        growth: 1.83
+        refusal_rate: 0.75
         active: true
       Analyst_15:
-        shift: 0
-        growth: 1.31
-        refusal_rate: 0.41
+        shift: 1
+        growth: 1.38
+        refusal_rate: 0.13
         active: true
       Analyst_10:
         shift: 2
-        growth: 1.16
-        refusal_rate: 0.5
+        growth: 1.99
+        refusal_rate: 0.52
         active: true
       Analyst_14:
-        shift: 1
-        growth: 1.53
+        shift: 0
+        growth: 1.82
         refusal_rate: 0.24
         active: true
 teams_freq:
