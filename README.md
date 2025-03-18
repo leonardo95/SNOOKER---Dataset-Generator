@@ -82,6 +82,6 @@ SNOOKER utilizes three data sources:
 - Configuration File - essentially contains default settings to help generate standard datasets. It possesses information regarding existent teams and their analysts, default families and their attributes, work shift data, day distribution, and other details.
 
 # Reference
-- Article
+- SNOOKER: a dataset generator for helpdesk services: https://doi.org/10.1007/s10844-024-00905-5 
 
 For further inquiries, contact me at: leosfpt@hotmail.com
