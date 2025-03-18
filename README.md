@@ -1,4 +1,4 @@
-# SNOOKER
+# SNOOKER [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 SNOOKER is a dataset generator designed to create synthetic helpdesk datasets with diverse distributions based on the chosen generation domain selected (currently, only Cybersecurity is implemented). This generator produces training and test datasets consisting of resolved tickets and test datasets comprising open tickets. Each dataset includes simulated incidents with varying incidents properties, managed by different teams of simulated operators, each exhibiting unique traits. These tickets are treated with emulated procedures and can be escalated, prioritized and scheduled, depending on certain conditions
 
@@ -85,5 +85,3 @@ SNOOKER utilizes three data sources:
 - Article
 
 For further inquiries, contact me at: leosfpt@hotmail.com
-
-Licensed under [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
