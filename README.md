@@ -85,3 +85,5 @@ SNOOKER utilizes three data sources:
 - Article
 
 For further inquiries, contact me at: leosfpt@hotmail.com
+
+Licensed under [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
