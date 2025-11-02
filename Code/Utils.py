@@ -1050,6 +1050,7 @@ class Utils:
         ax.set_xlabel('Date', fontsize='large')
         ax.set_ylabel('Wait Time (Min)')
         ax.set_title(title, fontsize='x-large')
+        os.makedirs("Evaluation", exist_ok=True)
         plt.savefig(f'Evaluation/{title}.png', dpi=300, bbox_inches='tight')
         plt.show()
         

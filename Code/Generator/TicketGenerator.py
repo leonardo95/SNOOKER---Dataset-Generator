@@ -13,7 +13,7 @@ from collections import OrderedDict
 from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
-import string, random, sys, pytz, calendar
+import string, random, sys, pytz, calendar, os
 from memory_profiler import profile
 from scipy.special import kl_div
 from scipy import stats
@@ -1312,6 +1312,7 @@ class TicketGenerator:
             #plt.title("Stacked Horizontal Bar Chart of Family Frequency by Year/Month")
             plt.legend(fontsize = 24, bbox_to_anchor=(1.01, 0.5) , loc='center left', ncol= 1, borderaxespad=0.,)
             plt.tight_layout()
+            os.makedirs("Plots", exist_ok=True)
             plt.savefig('Plots\\generated_families_month.svg', format="svg")
             plt.show()
             
