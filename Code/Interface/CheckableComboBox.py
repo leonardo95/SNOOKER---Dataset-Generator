@@ -1,12 +1,33 @@
+"""
+Created on Sun Mar 28 10:05:48 2021
+
+@author: www.geeksforgeeks.org
+@goal: Special widget for the interface
+"""
+
 from PyQt5.QtWidgets import QComboBox
 from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtCore import Qt
 
 import sys
   
-# creating checkable combo box class
 class CheckableComboBox(QComboBox):
     def __init__(self, *args, **kwargs):
+        """
+        Checkable ComboBox widget.
+
+        Parameters
+        ----------
+        *args : multiple types
+            Can have multiple arguments.
+        **kwargs : can have multiple contents
+            Content of the variables to be updated.
+
+        Returns
+        -------
+        None.
+
+        """
         super(CheckableComboBox, self).__init__()        
         
         self.args = args
@@ -20,37 +41,71 @@ class CheckableComboBox(QComboBox):
         self.setModel(QStandardItemModel(self))
         self._changed = False
   
-    # when any item get pressed
     def handle_item_pressed(self, index):
-  
-        # getting which item is pressed
+        """
+        Handler for when any item get pressed.      
+
+        Parameters
+        ----------
+        index : int
+            Item index pressed.
+
+        Returns
+        -------
+        None.
+
+        """
         item = self.model().itemFromIndex(index)
-        # make it check if unchecked and vice-versa
         if item.checkState() == Qt.Checked:
             item.setCheckState(Qt.Unchecked)
         else:
             item.setCheckState(Qt.Checked)
         self._changed = True
   
-        # calling method
         if self.type == "analyst" or self.type == "families":            
             self.check_items()
         
     def hidePopup(self):
+        """
+        Hides popup.
+
+        Returns
+        -------
+        None.
+
+        """
         if not self._changed:
             super(CheckableComboBox, self).hidePopup()
         self._changed = False
   
-    # method called by check_items
     def item_checked(self, index):
-  
-        # getting item at index
+        """
+        Checks state of item.
+
+        Parameters
+        ----------
+        index : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        bool
+            True if checked; False if unchecked.
+
+        """
         item = self.model().item(index, 0)
-        # return true if checked else false
         return item.checkState() == Qt.Checked
     
     def get_items_checked(self):
-        
+        """
+        Gets items checked.
+
+        Returns
+        -------
+        checked_items : list
+            List of item checked.
+
+        """
         checked_items = []
         
         for i in range(self.count()):
@@ -59,9 +114,15 @@ class CheckableComboBox(QComboBox):
                 
         return checked_items
   
-    # calling method
     def check_items(self):
-        #print("Aqui", self.limit)
+        """
+        Check items checked.
+
+        Returns
+        -------
+        None.
+
+        """
         for i in range(self.count()):
             item = self.model().item(i, 0)
             if len(self.get_items_checked()) >= self.limit:
@@ -71,39 +132,47 @@ class CheckableComboBox(QComboBox):
                 item.setEnabled(True)
                 
     def reset_items(self):
+        """
+        Resets the state of items to unchecked
+
+        Returns
+        -------
+        None.
+
+        """
         for i in range(self.count()):
             item = self.model().item(i, 0)
             item.setCheckState(Qt.Unchecked)
             item.setEnabled(True)
   
-    # method to update the label
     def update_labels(self, item_list):
-  
+        """
+        Updates the labels of items.
+
+        Parameters
+        ----------
+        item_list : list
+            List of items to update.
+
+        Returns
+        -------
+        None.
+
+        """
         n = ''
         count = 0
   
-        # traversing the list
         for i in item_list:
-            # if count value is 0 don't add comma
             if count == 0:
                 n += ' % s' % i
-            # else value is greater then 0
-            # add comma
             else:
                 n += ', % s' % i
-            # increment count
             count += 1
   
-        # loop
         for i in range(self.count()):
-            # getting label
             text_label = self.model().item(i, 0).text()
-            # default state
             if text_label.find('-') >= 0:
                 text_label = text_label.split('-')[0]
-            # shows the selected items
             item_new_text_label = text_label + ' - selected index: ' + n
-           # setting text to combo box
             self.setItemText(i, item_new_text_label)
-    # flush
     sys.stdout.flush()

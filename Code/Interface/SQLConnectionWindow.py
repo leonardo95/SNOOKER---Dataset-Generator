@@ -1,19 +1,30 @@
+"""
+Created on Mon Jul  3 14:58:49 2023
+
+@author: Leonardo Ferreira
+"""
+
 import psycopg2
 from psycopg2.extensions import connection
 from PyQt5.QtCore import pyqtSignal
 from Code.InterfaceUtils import InterfaceUtils 
-from PyQt5.QtWidgets import QMainWindow, QLabel, QLineEdit, QPushButton
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton
 
 class SQLConnectionWindow(QMainWindow):
     
     dataSubmitted = pyqtSignal(connection)  # Signal with tuple type
     def __init__(self):
+        """
+        Constructor for the SQL connection window.
+
+        Returns
+        -------
+        None.
+
+        """
         super().__init__()
 
-        # Set window title
         self.setWindowTitle("SQL Connection Configuration")
-
-        # Create QLabel widgets
         label1 = QLabel("Host:", self)
         label1.move(20, 20)
         label2 = QLabel("Port:", self)
@@ -25,7 +36,6 @@ class SQLConnectionWindow(QMainWindow):
         label5 = QLabel("Password:", self)
         label5.move(20, 180)
 
-        # Create QLineEdit widgets
         self.hostEdit = QLineEdit(self)
         self.hostEdit.setGeometry(80, 20, 200, 20)
         self.portEdit = QLineEdit(self)
@@ -38,12 +48,20 @@ class SQLConnectionWindow(QMainWindow):
         self.passwordEdit.setEchoMode(QLineEdit.Password)
         self.passwordEdit.setGeometry(80, 180, 200, 20)
 
-        # Create QPushButton widget
         button = QPushButton("Submit", self)
         button.setGeometry(120, 230, 80, 30)
-        button.clicked.connect(self.submitClicked)
+        button.clicked.connect(self.submit_clicked)
 
-    def submitClicked(self):
+    def submit_clicked(self):
+        """
+        Submits a request to the connected database.
+
+        Returns
+        -------
+        None.
+
+        """
+        #host="localhost", port="5432", database="test_2", user="postgres", password="user")
         host = self.hostEdit.text()
         port = self.portEdit.text()
         database = self.databaseEdit.text()

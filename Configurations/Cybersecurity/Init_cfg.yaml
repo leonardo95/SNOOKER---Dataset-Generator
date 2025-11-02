@@ -1,10 +1,6 @@
 generation_parameters:
-  train_ticket: 3514
-  test_ticket: 1
-  ticket_growth_type: maintain
-  ticket_growth_rate: 0.01
-  test_timerange: 5760
-  future_ticket: 0
+  n_tickets: 3500
+  ticket_growth_rate: 0
   families_number: 12
   minsubfamilies_number: 1
   maxsubfamilies_number: 11
@@ -13,6 +9,8 @@ generation_parameters:
   maxsubtechniques_number: 4
   use_default_family: true
   seed: 1
+  shifts: 4
+  max_transfer_steps: 5
   start_date: 01-04-2020 17:01:00
   end_date: 01-04-2021 11:43:00
   analyst_subfamily_action_probability: 0.9
@@ -33,12 +31,12 @@ generation_parameters:
   min_subtechnique_cost: 2
   max_subtechnique_cost: 5
   suspicious_subfamily: 0.4
+  with_ip: 0.3
   clients_number: 2
   actions_similarity: 3
   generation_mode: standard
   distribution_mode: normal
   balanced_shifts: true
-  prioritize_lower_teams: true
   reset_analysts_data: true
   debug: false
   logger_active: false
@@ -47,7 +45,7 @@ generation_parameters:
   week_equal_probabilities: true
   max_priority_levels: 5
 teams_info_pool:
-  L1:
+  Team_1:
   - Analyst_1
   - Analyst_2
   - Analyst_3
@@ -57,97 +55,145 @@ teams_info_pool:
   - Analyst_7
   - Analyst_8
   - Analyst_9
-  L2:
+  Team_2:
   - Analyst_10
   - Analyst_11
   - Analyst_12
   - Analyst_13
   - Analyst_14
   - Analyst_15
+  Team_3:
+  - Analyst_16
+  - Analyst_17
+  - Analyst_18
+  - Analyst_19
+  - Analyst_20
+  - Analyst_21
+  Team_4:
+  - Analyst_22
+  - Analyst_23
+  - Analyst_24
+  - Analyst_25
+  - Analyst_26
+  - Analyst_27
 
 analysts_info:
-  L1:
+  Team_1:
     analysts:
       Analyst_2:
         shift: 0
-        growth: 1.59
-        refusal_rate: 0.79
+        growth: 1.49
         active: true
       Analyst_1:
         shift: 2
-        growth: 1.45
-        refusal_rate: 0.72
+        growth: 1.43
         active: true
       Analyst_7:
         shift: 1
         growth: 1.7
-        refusal_rate: 0.8
         active: true
       Analyst_8:
-        shift: 0
-        growth: 1.02
-        refusal_rate: 0.42
+        shift: 3
+        growth: 1.72
         active: true
       Analyst_4:
-        shift: 2
-        growth: 1.44
-        refusal_rate: 0.42
+        shift: 0
+        growth: 1.23
         active: true
       Analyst_3:
-        shift: 1
-        growth: 1.82
-        refusal_rate: 0.21
+        shift: 2
+        growth: 1.95
         active: true
       Analyst_9:
-        shift: 0
-        growth: 1.21
-        refusal_rate: 0.33
+        shift: 1
+        growth: 1.9
         active: true
       Analyst_6:
-        shift: 2
-        growth: 1.6
-        refusal_rate: 0.66
+        shift: 3
+        growth: 1.03
         active: true
       Analyst_5:
-        shift: 1
-        growth: 1.79
-        refusal_rate: 0.54
+        shift: 0
+        growth: 1.03
         active: true
-  L2:
+  Team_2:
     analysts:
-      Analyst_11:
-        shift: 1
-        growth: 1.43
-        refusal_rate: 0.39
-        active: true
-      Analyst_13:
-        shift: 2
-        growth: 1.13
-        refusal_rate: 0.29
+      Analyst_10:
+        shift: 0
+        growth: 1.94
         active: true
       Analyst_12:
-        shift: 0
-        growth: 1.83
-        refusal_rate: 0.75
+        shift: 2
+        growth: 1.69
+        active: true
+      Analyst_11:
+        shift: 3
+        growth: 1.73
         active: true
       Analyst_15:
         shift: 1
-        growth: 1.38
-        refusal_rate: 0.13
+        growth: 1.76
         active: true
-      Analyst_10:
-        shift: 2
-        growth: 1.99
-        refusal_rate: 0.52
+      Analyst_13:
+        shift: 0
+        growth: 1.94
         active: true
       Analyst_14:
-        shift: 0
-        growth: 1.82
-        refusal_rate: 0.24
+        shift: 2
+        growth: 1.55
         active: true
-teams_freq:
-  L1: 0.5
-  L2: 0.5
+  Team_3:
+    analysts:
+      Analyst_11:
+        shift: 3
+        growth: 1.23
+        active: true
+      Analyst_17:
+        shift: 0
+        growth: 1.76
+        active: true
+      Analyst_20:
+        shift: 2
+        growth: 1.93
+        active: true
+      Analyst_18:
+        shift: 1
+        growth: 1.84
+        active: true
+      Analyst_19:
+        shift: 3
+        growth: 1.56
+        active: true
+      Analyst_16:
+        shift: 0
+        growth: 1.64
+        active: true
+  Team_4:
+    analysts:
+      Analyst_25:
+        shift: 1
+        growth: 1.63
+        active: true
+      Analyst_22:
+        shift: 3
+        growth: 1.86
+        active: true
+      Analyst_26:
+        shift: 0
+        growth: 1.74
+        active: true
+      Analyst_27:
+        shift: 2
+        growth: 1.51
+        active: true
+      Analyst_24:
+        shift: 1
+        growth: 1.91
+        active: true
+      Analyst_23:
+        shift: 3
+        growth: 1.19
+        active: true
 suspicious_countries:
   United States:
     start: 00:00:00.0
@@ -244,41 +290,41 @@ day_stages:
   night:
     start: 21:00
     end: 04:59
-shifts:
-  0:
-    start: 00:00:00.00
-    end: 07:59:59.999999
-  1:
-    start: 08:00:00.00
-    end: 15:59:59.999999
-  2:
-    start: 16:00:00.00
-    end: 23:59:59.999999
 family_time_4h:
   0:
     start: 00:00:00.00
     end: 03:59:59.999999
-    prob: 0.10
+    prob: 0.1
   1:
     start: 04:00:00.00
     end: 07:59:59.999999
-    prob: 0.20
+    prob: 0.2
   2:
     start: 08:00:00.00
     end: 11:59:59.999999
-    prob: 0.10
+    prob: 0.2
   3:
     start: 12:00:00.00
     end: 15:59:59.999999
-    prob: 0.2
+    prob: 0.1
   4:
     start: 16:00:00.00
     end: 19:59:59.999999
-    prob: 0.2
+    prob: 0.3
   5:
     start: 20:00:00.00
     end: 23:59:59.999999
-    prob: 0.2
+    prob: 0.1
+day_ticket_spikes:
+  spike_1:
+    mu: 09:00
+    std: 3600
+  spike_2:
+    mu: 13:30
+    std: 3600
+  spike_3:
+    mu: 18:45
+    std: 3600
 families:
   A:
     subtypes: 1

@@ -1,11 +1,15 @@
-# SNOOKER [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+# SNOOKER 
 
 SNOOKER is a dataset generator designed to create synthetic helpdesk datasets with diverse distributions based on the chosen generation domain selected (currently, only Cybersecurity is implemented). This generator produces training and test datasets consisting of resolved tickets and test datasets comprising open tickets. Each dataset includes simulated incidents with varying incidents properties, managed by different teams of simulated operators, each exhibiting unique traits. These tickets are treated with emulated procedures and can be escalated, prioritized and scheduled, depending on certain conditions
 
 # Libraries
-- Python
-- PyQT
+- Python, pyyQT, qtwidgets
+- Numpy, pandas, matplotbib
+- Psycopg2
 
+# How to run
+
+Run the SNOOKER.py (inside tthe interface folder) to customize and generate a synthetic dataset.
 
 # Dataset Settings
 

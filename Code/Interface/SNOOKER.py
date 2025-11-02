@@ -1,3 +1,9 @@
+"""
+Created on Mon Dec 21 12:16:30 2020
+
+@author: leonardo Ferreira
+@goal: Generator Main's Interface
+"""
 from Code.Configurator import Configurator
 from TeamAnalystWindow import TeamAnalystWindow
 from SQLConnectionWindow import SQLConnectionWindow
@@ -6,7 +12,7 @@ from Code.InterfaceUtils import InterfaceUtils
 from Code.Utils import Utils
 from Code.Generator.DatasetGenerator import DatasetGenerator
 
-import string, sys, os
+import string, sys, os, psutil
 from datetime import datetime
 from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, QTime, QThreadPool
 from PyQt5 import QtGui, QtCore
@@ -28,7 +34,9 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+# WorkerSignals class for sending signals about the generation
 class WorkerSignals(QObject):
+    
     finished = pyqtSignal()
     progress = pyqtSignal(int)
 
@@ -37,6 +45,21 @@ class Generator(QRunnable):
     finished = pyqtSignal()
     
     def __init__(self, *args, **kwargs):
+        """
+        SNOOKER constructor
+
+        Parameters
+        ----------
+        *args : many types
+            Multiple arguments related to the generation.
+        **kwargs : many types
+            Arguments can have various content.
+
+        Returns
+        -------
+        None.
+
+        """
         super(Generator, self).__init__()
         self.args = args
         self.kwargs = kwargs
@@ -44,23 +67,51 @@ class Generator(QRunnable):
         self.canceled = False
         
     def run(self):
+        """
+        Runs the DatasetGenerator class to build synthetic datasets with the defined configurations.
+
+        Returns
+        -------
+        None.
+
+        """
+        #print("\014")
         Utils.close_excel()
+        #Utils.reset_generation_folder("Output/Generation/")
         self.dataset_generator = DatasetGenerator(self, self.args[1]["logger_active"], "./Configurations/")
         self.dataset_generator.build_datasets('Resources/Countries/Countries_updated.json')
         self.signals.finished.emit()
         
 # Main Window Interface
 class SNOOKER(QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, cpu_times_before, cpu_usage_before, parent=None):
+        """
+        SNOOKER main interface constructor
+
+        Parameters
+        ----------
+        cpu_times_before : scpustimes
+            Comprises information about CPU time statistics.
+        cpu_usage_before : float
+            Percentage of total CPU time.
+        parent : QMainWindow, optional
+            Parent window. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
         super().__init__(parent)
         
         self.setWindowTitle("SNOOKER - Dataset Generator")
         InterfaceUtils.set_widgets_style(self, "Styles/style.css")
         self.setWindowIcon(QtGui.QIcon('./Resources/Icons/SNOOKER.png'))
         
-        self.dataset_field_pool = ["Cybersecurity", "Finance", "Health", "Education"]
-        self.dataset_field_pool.sort()
-        self.ticket_growth_types = ["Increase", "Maintain", "Decrease"]
+        self.cpu_times_before = cpu_times_before
+        self.cpu_usage_before = cpu_usage_before
+            
+        self.dataset_field_pool = ["Cybersecurity", "Education" "Finance", "Health"]
         
         self.auxiliar_dataset_params = {'country': True, 'country time': False, 'raised_tsp': True, 'allocated_tsp': True, 'stages': True, 'client': True, 
                                    'team analysts': False, 'wait time': True, 'shifted': False, 'subfamily action duration': False, 
@@ -70,30 +121,35 @@ class SNOOKER(QMainWindow):
         
         self.interface_params, self.generation_params, self.treatment_params, self.init_suspicious_countries = Configurator.load_configurations("Cybersecurity")
         self.generation_params["suspicious_ips"] = Configurator.get_suspicious_ips()
-        self.generation_params["special_steps"] = Configurator.get_special_steps(5)
-       
-        self.datasets_available = Utils.is_folder_empty("./Resources/RealDatasets") 
-        #print(self.datasets_available)
-       
-        if not self.datasets_available:
-            self.file = Utils.get_most_recent_file("./Resources/RealDatasets/")
-            self.generation_params["ticket_seasonality"], self.generation_params["family_seasonality"], self.generation_params["family_mean_duration"], self.generation_params["family_mapping"] = Configurator.get_ticket_seasonality(None, self.file, None)
+        self.generation_params["special_steps"] = Configurator.instantiate_special_steps(self.generation_params['max_transfer_steps'])
+        
+        self.datasets_available = Utils.contains_files("./Resources/Datasets") 
+        
+        if self.datasets_available:
+            self.file = Utils.get_smallest_file("./Resources/Datasets/")
+            print("File:", self.file)
+            self.generation_params["ticket_seasonality"], self.generation_params["family_seasonality"], self.generation_params["family_mean_duration"], self.generation_params["family_mapping"], self.generation_params["real_family_probs"], self.generation_params["real_dataset"] = Configurator.get_ticket_seasonality(self.file, False, None, False)
         else:
-            self.generation_params["ticket_seasonality"], self.generation_params["family_seasonality"], self.generation_params["family_mean_duration"], self.generation_params["family_mapping"] = None, None, None, None 
+            self.generation_params["ticket_seasonality"], self.generation_params["family_seasonality"], self.generation_params["family_mean_duration"], self.generation_params["family_mapping"], self.generation_params["real_family_probs"], self.generation_params["real_dataset"] = None, None, None, None, None, None
             self.generation_params["ticket_seasonality_selector"], self.generation_params["family_seasonality_selector"], self.generation_params["techniques_seasonality_selector"] = False, False, False
             self.file = "No real data!"
-            print(self.file)
-            
         self.countries_list = Configurator.get_countries_names('Resources/Countries/Countries_updated.json' )
+    
         
         InterfaceUtils.set_fonts(self)
         self.subwindows = list()
-        self.setupMainUi()
+        self.setup_main_UI()
         self.activateWindow()
     
-    # Setups the SNOOKER's UI
-    def setupMainUi(self):
-        
+    def setup_main_UI(self):
+        """
+        Setups the SNOOKER's UI.
+
+        Returns
+        -------
+        None.
+
+        """    
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
         
@@ -106,9 +162,16 @@ class SNOOKER(QMainWindow):
         
         main_window_layout.addWidget(main_tabwidget)
      
-    # Setups the Options Tab
     def setup_optional_parameters_tab(self):
-        
+        """
+        Setups the Options Tab.
+
+        Returns
+        -------
+        QWidget
+            Widget with options tab.
+
+        """   
         main_layout = QVBoxLayout()
         self.optionsTab = QWidget()
         
@@ -119,9 +182,16 @@ class SNOOKER(QMainWindow):
         
         return self.optionsTab
         
-    # Setups the Generation Tab
     def setup_dataset_generation_tab(self):
-        
+        """
+        Setups the main tab (configuration of the main generation parameters).
+
+        Returns
+        -------
+        QWidget
+            Generation widget.
+
+        """
         self.generationTab = QWidget()
         main_layout = QVBoxLayout()
 
@@ -153,9 +223,20 @@ class SNOOKER(QMainWindow):
         
         return self.generationTab 
    
-    # Setups the IP, Track Behaviours and Outliers of the Options Tab
     def load_selectors_widgets(self, main_layout):
+        """
+        Configures the IP, Track Behaviours and Outliers of the Options Tab
+
+        Parameters
+        ----------
+        main_layout : QVBoxLayout
+            Layout of the options tab.
+
+        Returns
+        -------
+        None.
         
+        """   
         options_params_layout = QHBoxLayout()
         ip_label = QLabel("IP:")
         options_params_layout.addWidget(ip_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
@@ -200,16 +281,27 @@ class SNOOKER(QMainWindow):
         self.ip_groupbox = InterfaceUtils.create_groupbox(self, "IP Configurations:", ip_layout, self.features_font, self.generation_params["ip_selector"])
         
         self.ip_type = InterfaceUtils.create_combox(self.generation_params["ips_pool"])
-        self.ip_type.currentIndexChanged.connect(self.pick_ipaddress)   
+        self.ip_type.currentIndexChanged.connect(self.pick_IP_address)   
         ip_layout.addWidget(self.ip_type, alignment=Qt.AlignHCenter | Qt.AlignVCenter) 
         
         options_params_layout.addLayout(output_parameters_layout)
         main_layout.addLayout(options_params_layout)
         main_layout.addWidget(self.ip_groupbox)
     
-    # The tracked countries are customized (hour, countries and days off) and loaded according the config file
     def load_suspicious_countries_widgets(self, main_layout):
+        """
+        The tracked countries are customized (hour, countries and days off) and loaded according the configuration file.    
+
+        Parameters
+        ----------
+        main_layout : QVBoxLayout
+            Layout of the options tab.
         
+        Returns
+        -------
+        None.
+        
+        """
         self.countries_grid = QGridLayout() 
         scroll = QScrollArea()      
         scroll_content = QWidget()
@@ -278,27 +370,42 @@ class SNOOKER(QMainWindow):
         sus_countries_layout.addWidget(scroll)
 
         self.sus_countries_combo.activated.connect(self.add_single_suspicious_country)    
-        
         main_layout.addWidget(self.sus_countries_groupbox)
     
-    # The generation can follow the standard approach (fast) or customized. The debug option is also presented
     def load_generation_modes(self):        
+        """
+        The generation can be standard (data from configuration file) or customized. The debug option is also presented to help understanding the generation.    
+
+        Returns
+        -------
+        None.
         
+        """
         generation_layout = QVBoxLayout()
         mode_layout = QHBoxLayout()
         
         self.generation = InterfaceUtils.create_groupbox(self, "Generation Mode:", generation_layout, self.features_font, True)
         
         load_files_layout = QHBoxLayout()
-        #load_files_layout.setSizeConstraint(QHBoxLayout.SetMinimumSize)
                 
-        self.fileButton = QPushButton("Select Dataset")
-        self.fileButton.clicked.connect(self.load_real_dataset)
-        self.fileLineEdit = InterfaceUtils.create_linedit(self.file, None, None, self.features_font)
-        self.fileLineEdit.setMinimumWidth(400)
-        
+        self.fileButton = QPushButton(f'{self.file}')
+       
+        if self.file != "No real data!":
+            print("There is real data!")
+            self.real_data_box = InterfaceUtils.create_checkbox("Real data", "real_dataset", True)
+        else:
+            self.real_data_box = InterfaceUtils.create_checkbox("Real data", "real_dataset", False)
+            #self.real_data_box.setEnabled(False)
+        self.real_data_box.stateChanged.connect(lambda state, sender=self.real_data_box: self.update_loggers(state, sender))
+       
+        if self.real_data_box.isChecked():
+            self.fileButton.setEnabled(True)
+        else:
+            self.fileButton.setEnabled(False)
+            
+        self.fileButton.clicked.connect(self.load_real_dataset)        
+        load_files_layout.addWidget(self.real_data_box, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         load_files_layout.addWidget(self.fileButton, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
-        load_files_layout.addWidget(self.fileLineEdit, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         
         self.generation_standard = QRadioButton("Configuration File", self.generation)        
         self.generation_custom = QRadioButton("Custom", self)
@@ -358,8 +465,15 @@ class SNOOKER(QMainWindow):
         generation_layout.addLayout(mode_layout)
         generation_layout.addLayout(other_options_layout)
     
-    # Customizes the analysts of each team
     def load_team_widgets(self):
+        """
+        Customizes the operators in each team and other features. The "Operators" button opens another window.
+
+        Returns
+        -------
+        None.
+        
+        """
         
         team_configs_layout = QHBoxLayout()
         self.teams_configs = InterfaceUtils.create_groupbox(self, "Team Configurations:", team_configs_layout, self.features_font, False)
@@ -391,17 +505,29 @@ class SNOOKER(QMainWindow):
         team_configs_layout.addLayout(action_layout) 
         
         # Analysts Window
-        analysts_button = QPushButton("Analysts", self) 
+        analysts_button = QPushButton("Operators", self) 
         analysts_button.setCursor(QtGui.QCursor(Qt.PointingHandCursor))
-        analysts_button.clicked.connect(lambda:self.build_new_subwindow("Cybersecurity"))
+        analysts_button.clicked.connect(lambda:self.build_new_subwindow("Operators", "Cybersecurity"))
         team_configs_layout.addWidget(analysts_button,alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         
         self.generation_standard.toggled.connect(self.pick_generation_method)
         self.generation_custom.toggled.connect(self.pick_generation_method)
     
-    # Customizes the ticket generations (number, start date and end date)
     def load_ticket_widgets(self, parent):
-        
+        """
+        Customizes the ticket generation (number, start date and end date, growth, seasonality, among other features).
+
+        Parameters
+        ----------
+        parent : QTabWidget
+            Parent tab widget.
+
+        Returns
+        -------
+        QWidget
+            Tab Widget.
+
+        """   
         self.ticketTab = QWidget()
         self.ticketTab.setEnabled(False)
 
@@ -410,13 +536,13 @@ class SNOOKER(QMainWindow):
         grid = QGridLayout() 
         date_layout.addLayout(grid)
 
-        train_ticket_number_layout = QHBoxLayout()
-        train_ticket = QLabel("Train Number:", self)
-        self.ticket_train_number = InterfaceUtils.create_linedit(str(self.generation_params['train_ticket']), "ticket_train", QtGui.QIntValidator(1, 10000000), self.features_font)
-        self.ticket_train_number.editingFinished.connect(lambda: self.check_input(self.ticket_train_number))
+        ticket_layout = QHBoxLayout()
+        ticket_label = QLabel("Ticket Number:", self)
+        self.ticket_number = InterfaceUtils.create_linedit(str(self.generation_params['n_tickets']), "n_tickets", QtGui.QIntValidator(1, 10000000), self.features_font)
+        self.ticket_number.editingFinished.connect(lambda: self.check_input(self.ticket_number))
         
-        train_ticket_number_layout.addWidget(train_ticket, alignment = Qt.AlignHCenter | Qt.AlignVCenter)
-        train_ticket_number_layout.addWidget(self.ticket_train_number, alignment = Qt.AlignHCenter | Qt.AlignVCenter)
+        ticket_layout.addWidget(ticket_label, alignment = Qt.AlignHCenter | Qt.AlignVCenter)
+        ticket_layout.addWidget(self.ticket_number, alignment = Qt.AlignHCenter | Qt.AlignVCenter)
         
         date_layout_init = QHBoxLayout()
         date_init = QLabel("Initial:", self)
@@ -438,8 +564,8 @@ class SNOOKER(QMainWindow):
         ticket_escalation_label = QLabel("Escalate Tickets:")
         self.ticket_escalation_toggle = InterfaceUtils.create_toogle(self.generation_params["ticket_escalation_selector"])
         
-        ticket_escalation_layout.addWidget(ticket_escalation_label, alignment=Qt.AlignRight | Qt.AlignVCenter)
-        ticket_escalation_layout.addWidget(self.ticket_escalation_toggle, alignment=Qt.AlignLeft | Qt.AlignVCenter) 
+        ticket_escalation_layout.addWidget(ticket_escalation_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
+        ticket_escalation_layout.addWidget(self.ticket_escalation_toggle, alignment=Qt.AlignHCenter | Qt.AlignVCenter) 
         
         escalation_widget = QWidget()
         escalation_layout = QHBoxLayout()
@@ -450,8 +576,8 @@ class SNOOKER(QMainWindow):
         self.escalation_slider.setMaximumWidth(100)
         self.escalation_slider.valueChanged.connect(self.update_escalation_rate)
         
-        escalation_layout.addWidget(escalate_label, alignment = Qt.AlignLeft | Qt.AlignVCenter)
-        escalation_layout.addWidget(self.escalation_slider, alignment = Qt.AlignLeft | Qt.AlignVCenter)
+        escalation_layout.addWidget(escalate_label, alignment = Qt.AlignHCenter | Qt.AlignVCenter)
+        escalation_layout.addWidget(self.escalation_slider, alignment = Qt.AlignHCenter | Qt.AlignVCenter)
         
         self.ticket_escalation_toggle.stateChanged.connect(lambda:self.pick_escalation_method(escalation_widget))
         
@@ -459,74 +585,46 @@ class SNOOKER(QMainWindow):
         ticket_season_label = QLabel("Ticket Seasonality:")
         self.ticket_season_toggle = InterfaceUtils.create_toogle(self.generation_params["ticket_seasonality_selector"])
         
-        ticket_season_layout.addWidget(ticket_season_label, alignment=Qt.AlignRight | Qt.AlignVCenter)
-        ticket_season_layout.addWidget(self.ticket_season_toggle, alignment=Qt.AlignLeft | Qt.AlignVCenter) 
+        ticket_season_layout.addWidget(ticket_season_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
+        ticket_season_layout.addWidget(self.ticket_season_toggle, alignment=Qt.AlignHCenter | Qt.AlignVCenter) 
         
         ticket_growth_layout = QHBoxLayout()
         ticket_growth_label = QLabel("Ticket Growth:")
         self.ticket_growth_toggle = InterfaceUtils.create_toogle(self.generation_params["ticket_growth_selector"])
-        self.ticket_growth_type = InterfaceUtils.create_combox(self.ticket_growth_types)
-        self.ticket_growth_type.currentIndexChanged.connect(self.pick_growth_type)   
-        self.ticket_growth_doublespin = InterfaceUtils.create_doublespin(self, 0.1, 0.9, 0.1, self.generation_params["ticket_growth_rate"])
+        self.ticket_growth_doublespin = InterfaceUtils.create_doublespin(self, -0.9, 0.9, 0.05, self.generation_params["ticket_growth_rate"])
+        if self.generation_params["ticket_growth_rate"] == 0:
+            self.ticket_growth_doublespin.setEnabled(False)
         self.ticket_growth_doublespin.valueChanged.connect(self.update_growth_rate)
     
-        ticket_growth_layout.addWidget(ticket_growth_label, alignment=Qt.AlignLeft | Qt.AlignVCenter)
-        ticket_growth_layout.addWidget(self.ticket_growth_toggle, alignment=Qt.AlignLeft | Qt.AlignVCenter)
-        ticket_growth_layout.addWidget(self.ticket_growth_type, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
-        ticket_growth_layout.addWidget(self.ticket_growth_doublespin, alignment=Qt.AlignLeft | Qt.AlignVCenter)
+        ticket_growth_layout.addWidget(ticket_growth_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
+        ticket_growth_layout.addWidget(self.ticket_growth_toggle, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
+        ticket_growth_layout.addWidget(self.ticket_growth_doublespin, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         
         self.ticket_season_toggle.stateChanged.connect(self.pick_ticket_seasonality)
         self.ticket_growth_toggle.stateChanged.connect(self.pick_ticket_growth)
-        
-        test_ticket_number_layout = QHBoxLayout()
-        test_ticket = QLabel("Test Number:", self)
-        self.ticket_test_number = InterfaceUtils.create_linedit(str(self.generation_params['test_ticket']), "ticket_test", QtGui.QIntValidator(1, 10000000), self.features_font)
-        self.ticket_test_number.editingFinished.connect(lambda: self.check_input(self.ticket_test_number))
-        
-        test_ticket_number_layout.addWidget(test_ticket, alignment = Qt.AlignHCenter | Qt.AlignVCenter)
-        test_ticket_number_layout.addWidget(self.ticket_test_number, alignment = Qt.AlignHCenter | Qt.AlignVCenter)
 
-        family_widget = QWidget()
-        new_family_layout = QHBoxLayout()
-        family_widget.setLayout(new_family_layout)
-        
-        new_family_label = QLabel("New Family Likelihood:", self)
-        new_family_layout.addWidget(new_family_label, alignment = Qt.AlignRight | Qt.AlignVCenter)
-        
-        self.family_slider = InterfaceUtils.create_doublespin(self, 0, 0.4, 0.1, self.generation_params["family_rate_percentage"])
-        self.family_slider.setMaximumWidth(100)
-        self.family_slider.valueChanged.connect(self.update_new_family_rate)
-        new_family_layout.addWidget(self.family_slider, alignment = Qt.AlignLeft | Qt.AlignVCenter)
-        
-        subfamily_widget = QWidget()
-        new_subfamily_layout = QHBoxLayout()
-        subfamily_widget.setLayout(new_subfamily_layout)
-        subfamily_label = QLabel("New Subfamily Likelihood:", self)
-        new_subfamily_layout.addWidget(subfamily_label, alignment = Qt.AlignLeft | Qt.AlignVCenter)
-
-        self.subfamily_slider = InterfaceUtils.create_doublespin(self, 0, 0.4, 0.1, self.generation_params["subfamily_rate_percentage"])
-        self.subfamily_slider.setMaximumWidth(100)
-        self.subfamily_slider.valueChanged.connect(self.update_new_subfamily_rate)
-        new_subfamily_layout.addWidget(self.subfamily_slider, alignment = Qt.AlignLeft | Qt.AlignVCenter)
-        
-        grid.addLayout(train_ticket_number_layout, 0, 0)
+        grid.addLayout(ticket_layout, 0, 0)
         grid.addLayout(date_layout_init, 1, 0)
         grid.addLayout(date_layout_end, 1, 1)
         grid.addLayout(ticket_escalation_layout, 2, 0)
         grid.addWidget(escalation_widget, 2, 1)
         grid.addLayout(ticket_season_layout, 3, 0)
         grid.addLayout(ticket_growth_layout, 3, 1)
-        grid.addLayout(test_ticket_number_layout, 0, 1)
-        grid.addWidget(family_widget, 4, 0)
-        grid.addWidget(subfamily_widget, 4, 1)
 
         self.ticketTab.setLayout(date_layout)
         
         return self.ticketTab 
     
-    # Customizes the families (default, number of families, minimum number of subfamilies, maximum number of subfamilies and distribution according to the time of day and weekday)
     def load_family_widgets(self):
-        
+        """
+        Customizes the family generation (can be by default or customized). The number of families, minimum number of subfamilies, maximum number of subfamilies, week and time distributions, and other features can be personalized.
+
+        Returns
+        -------
+        QScrollArea
+            Scroll area in the main window.
+
+        """
         self.familyTab = QWidget()
         self.familyTab.setEnabled(False)        
         family_default_layout = QVBoxLayout()
@@ -539,14 +637,6 @@ class SNOOKER(QMainWindow):
         family_default = InterfaceUtils.create_radiobox("Default", self.generation_params["use_default_family"])
         family_default.toggled.connect(lambda:self.pick_family_method(family_default))
         default_layout.addWidget(family_default, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
-        
-# =============================================================================
-#         self.subfamily_coordinated_checkbox = QRadioButton("Multiple Attack Detection")
-#         self.subfamily_coordinated_checkbox.setChecked(True)
-#         self.subfamily_coordinated_checkbox.setLayoutDirection(Qt.RightToLeft) 
-#         self.subfamily_coordinated_checkbox.toggled.connect(self.multipleAttackMode)
-#         default_layout.addWidget(self.subfamily_coordinated_checkbox, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
-# =============================================================================
         
         plot_layout = QHBoxLayout()
         plot_label = QLabel("Plots:")
@@ -769,9 +859,16 @@ class SNOOKER(QMainWindow):
         
         return self.family_scroll
     
-    # Customizes the techniques (number, minimum subtechniques, maximum subtechniques)
     def load_technique_widgets(self):
-        
+        """
+        Customizes the properties related to techniques used for ticket treatment (number, minimum subtechniques, maximum subtechniques, among other features).    
+
+        Returns
+        -------
+        techniques_scroll : QScrollArea
+            Scroll area in the main window.
+
+        """
         self.techniquesTab = QWidget()
         self.techniquesTab.setEnabled(False)
         
@@ -871,7 +968,7 @@ class SNOOKER(QMainWindow):
         max_subtechniques_dur_rate_label = QLabel(f'Rate: {self.max_subtechnique_slider.value()} %', self)
         max_subtechniques_dur_rate_label.setObjectName('max_sub')
         self.min_subtechnique_slider.sliderReleased.connect(lambda: self.update_subtechnique_rate(self.min_subtechnique_slider, min_subtechniques_dur_rate_label))
-        self.max_subtechnique_slider.sliderReleased.connect(lambda: self.update_subtechnique_rate(self.max_subtechnique_slider, self.max_subtechniques_dur_rate_label))
+        self.max_subtechnique_slider.sliderReleased.connect(lambda: self.update_subtechnique_rate(self.max_subtechnique_slider, max_subtechniques_dur_rate_label))
         
         temp_layout.addWidget(max_subtechniques_dur_rate_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         max_subtechniques_dur_layout.addLayout(temp_layout)
@@ -892,9 +989,16 @@ class SNOOKER(QMainWindow):
         
         return techniques_scroll
     
-    # Customizes the techniques (number, minimum subtechniques, maximum subtechniques)
     def load_learning_widgets(self):
-        
+        """
+        Customized the minimum and maximun number of events for operator learning (helps determining when operators should improve their learning rate).
+
+        Returns
+        -------
+        learning_scroll : QScrollArea
+            Scroll area in the main window.
+
+        """
         self.learningTab = QWidget()
         self.learningTab.setEnabled(False)
         
@@ -906,20 +1010,22 @@ class SNOOKER(QMainWindow):
         # Min subTechniques
         min_counter_layout = QHBoxLayout()
         min_counter_label = QLabel("Min counter:", self)
-        min_counter_layout.addWidget(min_counter_label, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        min_counter_layout.addWidget(min_counter_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         
         self.min_counter_number = InterfaceUtils.create_linedit(str(self.treatment_params['min_learning_counter']), "min_counter", QtGui.QIntValidator(), self.features_font)
+        self.min_counter_number.setEnabled(False)
         self.min_counter_number.editingFinished.connect(lambda: self.check_input(self.min_counter_number))
-        min_counter_layout.addWidget(self.min_counter_number, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        min_counter_layout.addWidget(self.min_counter_number, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         
         # Max subTechniques
         max_counter_layout = QHBoxLayout()
         max_counter_label = QLabel("Max counter:", self)
-        max_counter_layout.addWidget(max_counter_label, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        max_counter_layout.addWidget(max_counter_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         
         self.max_counter_number = InterfaceUtils.create_linedit(str(self.treatment_params['max_learning_counter']), "max_counter", QtGui.QIntValidator(), self.features_font)
+        self.max_counter_number.setEnabled(False)
         self.max_counter_number.editingFinished.connect(lambda: self.check_input(self.max_counter_number))
-        max_counter_layout.addWidget(self.max_counter_number, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        max_counter_layout.addWidget(self.max_counter_number, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
         
         learning_configs_layout.addLayout(min_counter_layout)
         learning_configs_layout.addLayout(max_counter_layout)
@@ -927,9 +1033,20 @@ class SNOOKER(QMainWindow):
         
         return learning_scroll
     
-    # Customizes the outlier (impact and frequency)
     def load_outlier_widgets(self, main_layout):
-        
+        """
+        Customizes widgets related to outlier (impact and frequency)-    
+
+        Parameters
+        ----------
+        main_layout : QVBoxLayout
+            Windoow main layout.
+
+        Returns
+        -------
+        None.
+
+        """
         outlier_layout = QHBoxLayout()
         self.outlier_groupbox = InterfaceUtils.create_groupbox(self, "Outlier Configurations:", outlier_layout, self.features_font, self.interface_params["outlier_selector"])
 
@@ -957,24 +1074,46 @@ class SNOOKER(QMainWindow):
         outlier_layout.addLayout(outlier_rate_layout)
         main_layout.addWidget(self.outlier_groupbox)
     
-    # Sets the generate button and generation status
     def load_generate_button(self):
-              
-        generate_button_layout = QVBoxLayout()
+        """
+        Button for dataset generation.
+
+        Returns
+        -------
+        report_layout : QHBoxLayout
+            Layout of the generation button.
+
+        """          
+        bar_layout = QVBoxLayout()
 
         self.generate_button = InterfaceUtils.create_button(self, "Generate", "generateButton", "ready")
         self.generate_button.clicked.connect(self.check_generation)
-        generate_button_layout.addWidget(self.generate_button, alignment = Qt.AlignHCenter | Qt.AlignVCenter)
-
-        return generate_button_layout
+        bar_layout.addWidget(self.generate_button, alignment = Qt.AlignHCenter | Qt.AlignVCenter)
+       
+        self.progress_report = QLabel("", self)
+        self.progress_report.setFont(QtGui.QFont('Arial', 11)) 
+        self.progress_report.setFont(self.features_font)
+        self.progress_report.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)   
+        bar_layout.addWidget(self.progress_report)
+        
+        report_layout = QHBoxLayout()
+        report_layout.addLayout(bar_layout)
+        
+        return report_layout
     
-    # Adds families to comboBox
     def add_family(self):
+        """
+        Adds families to comboBox.
+
+        Returns
+        -------
+        None.
+
+        """
         families = ""
         counter = 0
         
         for i in range(self.selectable_families_combo.count()):
-            #print(f'{selected_families.itemText(i)} {selected_families.item_checked(i)}')
             if self.selectable_families_combo.item_checked(i):     
                 if families == "":
                     families = f'{families}{self.selectable_families_combo.itemText(i)}'
@@ -990,7 +1129,25 @@ class SNOOKER(QMainWindow):
                     
     # Sets the suspicious counters in the Options Tab
     def set_suspicious_countries(self, country, layout, country_idx, initial):
-        
+        """
+        Configures the suspicious countries in the Options Tab.
+
+        Parameters
+        ----------
+        country : strs
+            Country selected.
+        layout : QGridLayout
+            Grid layout of the suspicious countries.
+        country_idx : int
+            Index of the country selected.
+        initial : bool
+            If coutnrie(s) is/are set at the start of the setup or not. 
+
+        Returns
+        -------
+        None.
+
+        """
         self.generation_params["suspicious_countries"][country] = {}
 
         country_label = QLabel("Country:" , self) 
@@ -1025,21 +1182,32 @@ class SNOOKER(QMainWindow):
         layout.addWidget(country_end_date_label, country_idx, 4)   
         layout.addWidget(country_end_date, country_idx, 5)  
 
-    # Adds all the suspicioues countries
     def add_suspicious_countries(self):
-        
+        """
+        Adds all the suspicious countries to the suspicious countries layout.
+
+        Returns
+        -------
+        None.
+
+        """        
         keys_list = list(self.init_suspicious_countries.keys())
         for country in self.init_suspicious_countries:
             country_index = self.sus_countries_combo.findText(country)
             country_item = self.sus_countries_combo.model().item(country_index, 0)
             country_item.setCheckState(Qt.Checked)
             self.sus_countries_combo.setCurrentIndex(country_index)
-
             self.set_suspicious_countries(country, self.countries_grid, keys_list.index(country), True)
             
-    # Adds a single country
     def add_single_suspicious_country(self):
-        
+        """
+        Adds a single country to the suspicious countries layout.
+
+        Returns
+        -------
+        None.
+
+        """
         country = self.sus_countries_combo.itemText(self.sus_countries_combo.currentIndex())
         keys_list = list(self.init_suspicious_countries.keys())
         keys_list.append(country)
@@ -1049,9 +1217,15 @@ class SNOOKER(QMainWindow):
         else:
             self.remove_country(country)
     
-    # Adds a single country
     def update_output_params(self):
-        
+        """
+        Updates the columns that the generated dataset should possess.
+
+        Returns
+        -------
+        None.
+
+        """    
         param = self.output_parameters_combo.itemText(self.output_parameters_combo.currentIndex())
         print("Param:", param)
         if self.auxiliar_dataset_params[param]:
@@ -1063,6 +1237,19 @@ class SNOOKER(QMainWindow):
     
     # Removes a certain country
     def remove_country(self, country):
+        """
+        Removes a certain country from the suspicious countries list.
+
+        Parameters
+        ----------
+        country : str
+            Country to be unselected.
+
+        Returns
+        -------
+        None.
+
+        """
         print(f'Country {country} was unchecked')
         self.generation_params["suspicious_countries"][country]['widget label country'].setParent(None)
         self.generation_params["suspicious_countries"][country]['widget country'].setParent(None)
@@ -1071,58 +1258,154 @@ class SNOOKER(QMainWindow):
         self.generation_params["suspicious_countries"][country]['widget label end date'].setParent(None)
         self.generation_params["suspicious_countries"][country]['widget end date'].setParent(None)
         del(self.generation_params["suspicious_countries"][country]) 
+        
+    def closeTool(self):
+        """
+        Closes all open windows.
+
+        Returns
+        -------
+        None.
+
+        """
+        for i in self.subwindows:
+            i.close()       
+        self.close()
     
     # Opens Teams window
-    def build_new_subwindow(self, domain):
+    def build_new_subwindow(self, window_type, domain):
+        """
+        Opens a new subwindow (for the team configuration).
+
+        Parameters
+        ----------
+        windowType : str
+            Window type (Analysts).
+        domain : str
+            Generation domain (cybersecurity).
+
+        Returns
+        -------
+        None.
+
+        """    
+        subwindow_found = False
         
-        sub_window = TeamAnalystWindow(self, domain)
-        sub_window.window().resize(760, 500)
-        self.subwindows.append(sub_window)
-        sub_window.show()
+        for i in self.subwindows:
+            if i.type == window_type:
+                subwindow_found = True
+                if window_type == "Analysts":
+                    print("The analysts window is already opened!")
+                break
+        
+        if not subwindow_found:
+            sub_window = TeamAnalystWindow(self, window_type, domain)
+            sub_window.window().resize(700, 500)
+            self.subwindows.append(sub_window)
+            sub_window.show()
     
-    # Locks the ability to change the start and end time
     def lock_dates(self, widget):
-        
+        """
+        Locks the ability to change the start and end datetimes for the generation.   
+
+        Parameters
+        ----------
+        widget : QWidget
+            Widget responsible for the configuration of the start and end datetimes.
+
+        Returns
+        -------
+        None.
+
+        """    
         if widget.isEnabled():
             print("Dates customization disabled!") 
             widget.setEnabled(False)
             self.sus_countries_lock.setIcon(QtGui.QIcon('Resources/Icons/locked.ico'))
-            self.sus_countries_lock.setIconSize(QSize(40, 40))
+            self.sus_countries_lock.setIconSize(QSize(40, 40))   
         else:
             print("Dates customization enabled!")
             widget.setEnabled(True)
             self.sus_countries_lock.setIcon(QtGui.QIcon('Resources/Icons/unlocked.ico'))
             self.sus_countries_lock.setIconSize(QSize(40, 40))
     
-    # Changes the domain being analysed. The default is Cybersecurity
     def change_file_format(self, file_format):
-        
+        """
+        Changes the domain being analyzed (default is cybersecurity).
+
+        Parameters
+        ----------
+        file_format : int
+            File index.
+
+        Returns
+        -------
+        None.
+
+        """
         self.generation_params["format_selected_idx"] = file_format
-        #print(file_format)
+        print(file_format)
         print("Variables ip selected:", str(self.format_options.currentText()))
         
-    # Changes the domain being analysed. The default is Cybersecurity
     def pick_source_data(self, source_data_format):
-        
+        """
+        Selects the source data of real data.
+
+        Parameters
+        ----------
+        source_data_format : int
+            Source data index.
+
+        Returns
+        -------
+        None.
+
+        """
         print("Source data:", self.source_options.currentText())
-        #print(source_data_format)
+        print(source_data_format)
         if source_data_format == 0:
             database_window = SQLConnectionWindow()
             database_window.setGeometry(300, 300, 300, 300)
-            database_window.dataSubmitted.connect(self.receiveConnection)
+            database_window.dataSubmitted.connect(self.receive_connection)
             self.subwindows.append(database_window)
             database_window.show()
         else:
-            self.generation_params["ticket_seasonality"], self.generation_params["family_seasonality"], self.generation_params["family_mean_duration"], self.generation_params["family_mapping"] = Configurator.get_ticket_seasonality("small", self.source_options.currentText(), None, False)
+            if self.datasets_available:
+                self.update_seasonality_widgets(True)
+            else:
+                self.update_seasonality_widgets(False)
 
-    # Connects to existing database    
-    def receiveConnection(self, conn):
+    def receive_connection(self, conn):
+        """
+        Receives information from the connected database.    
+
+        Parameters
+        ----------
+        conn : psycopg2
+            Database connection.
+
+        Returns
+        -------
+        None.
+
+        """
         print("Received Connection Object")
-        self.generation_params["ticket_seasonality"], self.generation_params["family_seasonality"], self.generation_params["family_mean_duration"], self.generation_params["family_mapping"] = Configurator.get_ticket_seasonality("small", "DATABASE", conn, False)
+        self.generation_params["ticket_seasonality"], self.generation_params["family_seasonality"], self.generation_params["family_mean_duration"], self.generation_params["family_mapping"] = Configurator.get_ticket_seasonality(self.file, True, conn, False)
 
-    # Sets the default family (Follows normal distribution)
     def pick_distribution_method(self, d):
-        
+        """
+        Sets the distribution of families.
+
+        Parameters
+        ----------
+        d : str
+            Distribution picked for families.
+
+        Returns
+        -------
+        None.
+
+        """        
         if d.text() == "Normal":
             if d.isChecked() == True:
                 print("Normal distributions activated!")
@@ -1136,14 +1419,42 @@ class SNOOKER(QMainWindow):
                 self.time_generation.setEnabled(False)
                 self.generation_params["distribution_mode"] = "uniform"
             
-    # Activates/Deactivates the logger functionality
     def update_loggers(self, state, sender):
+        """
+        Activates/Deactivates the logger functionality.
+
+        Parameters
+
+        ----------
+        state : int
+            Logger state.
+        sender : str
+            Widget that required a change.
+
+        Returns
+        -------
+        None.
         
+        """
         if state == 2:
             if sender.objectName() == "log_data":
                 print("Logger Enabled")
                 self.generation_params["logger_active"] = True
                 print(self.generation_params["logger_active"])
+            elif sender.objectName() == "real_dataset":
+                self.datasets_available = Utils.contains_files("./Resources/Datasets") 
+                if self.datasets_available:
+                    self.file = Utils.get_smallest_file("./Resources/Datasets/")
+                    print("Real data Enabled")
+                    self.fileButton.setEnabled(True)
+                    self.fileButton.setText(f'{self.file}')
+                    print("File:", self.file)
+                    self.update_seasonality_widgets(True)
+                else:
+                    print("No data available")
+                    self.fileButton.setEnabled(False)
+                    self.fileButton.setText("No data available")
+                    self.update_seasonality_widgets(False)
             else:
                 print("Reset Analysts Info")
                 self.generation_params["reset_analysts_data"] = True
@@ -1153,14 +1464,34 @@ class SNOOKER(QMainWindow):
                 print("Logger Disabled")
                 self.generation_params["logger_active"] = False
                 print(self.generation_params["logger_active"])
+            elif sender.objectName() == "real_dataset":
+                self.file = "No real data!"
+                print("Real data Disabled")
+                self.fileButton.setEnabled(False)
+                if self.datasets_available:
+                    self.fileButton.setText("No dataset loaded")
+                else:
+                    self.fileButton.setText("No data available")
+                self.update_seasonality_widgets(False)
             else:
                 print("Analysts Info not changed")
                 self.generation_params["reset_analysts_data"] = False
                 print(self.generation_params["reset_analysts_data"])
     
-    # Changes the option of using default families
     def pick_family_method(self, d):
-	
+        """
+        Uses default or customized families.
+
+        Parameters
+        ----------
+        d : QRadioButton
+            Family distribution button.
+
+        Returns
+        -------
+        None.
+
+        """
         if d.isChecked():
             print("Default Families actived!")
             self.distribution_groupbox.setEnabled(False)
@@ -1172,30 +1503,38 @@ class SNOOKER(QMainWindow):
             self.generation_params["use_default_family"] = False
             self.generation_params["default_alert_pool"] = {}
         self.pick_distribution_method(self.family_distribution_normal)
-            
-# =============================================================================
-#     # Changes the option of detecting attacks from different natures
-#     def multipleAttackMode(self, d):
-# 	
-#         if d:
-#             print("Attacks with different natures!")
-#             #self.coordinated_attacks_groupbox.setEnabled(True)
-#             self.interface_params["multiple_attack_selector"] = True
-#         else:
-#             print("Attacks with only one nature!")
-#             #self.coordinated_attacks_groupbox.setEnabled(False)
-#             self.interface_params["multiple_attack_selector"] = False
-# =============================================================================
     
-    # Gets the address picked by the user
-    def pick_ipaddress(self, i):
-        
+    def pick_IP_address(self, i):
+        """
+        Gets the type of IP address.        
+
+        Parameters
+        ----------
+        i : int
+            IP address index.
+
+        Returns
+        -------
+        None.
+
+        """
         self.generation_params["ip_selected_idx"] = i
         print("Variables ip selected:", str(self.ip_type.currentText()))  
     
-    # Updates the start and end time of the tickets
     def update_ticket_dates(self, stage):
-        
+        """
+        Updates the start and end datetimes for the generation.
+
+        Parameters
+        ----------
+        stage : str
+            Start or end datetime selected.
+
+        Returns
+        -------
+        None.
+
+        """    
         if stage == "initial datetime":
             self.generation_params["start_date"] = self.date_init_input.text()
             print("New initial datetime:", self.generation_params["start_date"])
@@ -1203,8 +1542,15 @@ class SNOOKER(QMainWindow):
             self.generation_params["end_date"] = self.date_end_input.text()   
             print("New end datetime:", self.generation_params["end_date"])
     
-    # Changes the time probability of the families
     def pick_time_method(self):
+        """
+        Changes the time probability of the families.      
+
+        Returns
+        -------
+        None.
+
+        """
 	
         if self.isChecked():
             print("In terms of time, all Families have the same probability")
@@ -1217,9 +1563,15 @@ class SNOOKER(QMainWindow):
             self.spin_time_day_light.setEnabled(True)
             self.spin_time_night_light.setEnabled(True)
                 
-    # Changes the week probability of the families
     def pick_week_method(self):
-	
+        """
+        Changes the week probability of the families.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.week_equal.isChecked():
             print("In terms of the day, all Families have the same probability")
             self.generation_params["week_equal_probabilities"] = True
@@ -1231,9 +1583,22 @@ class SNOOKER(QMainWindow):
             self.spin_weekend.setEnabled(True)
             self.spin_week.setEnabled(True)
             
-    # Updates the families time probabilities
     def update_families_time_probabilities(self, label, prob):
-	
+        """
+        Updates the families time probabilities (daylight and night time).
+
+        Parameters
+        ----------
+        label : Qlabel
+            Daylight or night time labels.
+        prob : float
+            Probability selected for the chosen label.
+
+        Returns
+        -------
+        None.
+        
+        """
         if label.text() == "Higher on Daylight":
             #print("Time prob:", prob.value())
             time_light_prob = float (prob.value()/3)
@@ -1268,9 +1633,22 @@ class SNOOKER(QMainWindow):
             self.generation_params["family_time_4h"][4]['prob'] = time_light_day_prob
             self.spin_time_day_light.setValue(time_light_prob)
          
-    # Updates the families week probabilities 
     def update_families_week_probabilities(self, label, prob):
-	
+        """
+        Updates the families week probabilities (weekday and weekend).
+
+        Parameters
+        ----------
+        label : QLabel
+            Weekday or weekend labels.
+        prob : float
+            Probability selected for the chosen label.
+
+        Returns
+        -------
+        None.
+
+        """
         if label.text() == "Higher on Weekdays":
             #print("Week prob:", prob.value())
             week_day_prob = float (prob.value()/5)
@@ -1306,12 +1684,22 @@ class SNOOKER(QMainWindow):
             self.generation_params["week_time"][4]['prob'] = week_day_prob
             self.spin_week.setValue(week_day)
                 
-    # Updates the ticket fields (number, families and techniques)
     def update_inputs(self, mode):
-        
+        """
+        Updates various attributes regarding tickets, families, techniques, and other features.
+
+        Parameters
+        ----------
+        mode : str
+            Standard or Custom.
+
+        Returns
+        -------
+        None.
+
+        """
         if mode == "Configuration File":
-            self.ticket_train_number.setText(str(self.generation_params['train_ticket']))
-            self.ticket_test_number.setText(str(self.generation_params['test_ticket']))
+            self.ticket_number.setText(str(self.generation_params['n_tickets']))
             self.family_number.setText(str(self.generation_params['families_number']))
             self.min_subfamily_number.setText(str(self.generation_params['minsubfamilies_number']))
             self.max_subfamily_number.setText(str(self.generation_params['maxsubfamilies_number']))
@@ -1321,8 +1709,7 @@ class SNOOKER(QMainWindow):
             self.min_counter_number.setText(str(self.treatment_params['min_learning_counter']))
             self.max_counter_number.setText(str(self.treatment_params['max_learning_counter']))
         else:
-            self.ticket_train_number.setText("")
-            self.ticket_test_number.setText("")
+            self.ticket_number.setText("")
             self.family_number.setText("")
             self.min_subfamily_number.setText("")
             self.max_subfamily_number.setText("")
@@ -1332,9 +1719,15 @@ class SNOOKER(QMainWindow):
             self.min_counter_number.setText("")
             self.max_counter_number.setText("")
            
-    # Changes the generation mode (standard and custom)
     def pick_generation_method(self):
-        
+        """
+        Changes the generation mode (standard and custom).
+
+        Returns
+        -------
+        None.
+
+        """
         radioButton = self.sender()
         if radioButton.text() == "Configuration File":
             if radioButton.isChecked() == True:
@@ -1351,8 +1744,11 @@ class SNOOKER(QMainWindow):
                 self.family_season_toggle.setChecked(True) 
                 self.ticket_season_toggle.setEnabled(True)
                 self.interface_params["generation_mode"] = "standard"
-                if self.datasets_available:
-                    self.generation_params["ticket_seasonality_selector"], self.generation_params["family_seasonality_selector"], self.generation_params["techniques_seasonality_selector"] = False, False, False
+                if not self.datasets_available:
+                    self.update_seasonality_widgets(False)
+                else:
+                    if self.real_data_box.isChecked():
+                        self.update_seasonality_widgets(True)
         if radioButton.text() == "Custom":
             if radioButton.isChecked() == True:
                 print("Custom Mode activated!")
@@ -1368,23 +1764,40 @@ class SNOOKER(QMainWindow):
                 self.family_season_toggle.setChecked(False) 
                 self.ticket_season_toggle.setChecked(False)
                 self.ticket_season_toggle.setEnabled(False)
+                if not self.datasets_available:
+                    self.update_seasonality_widgets(False)
+                else:
+                    if self.real_data_box.isChecked():
+                        self.update_seasonality_widgets(True)
                 self.interface_params["generation_mode"] = "custom"
                 
         self.update_inputs(radioButton.text())
         
-    # Prints the plots 
     def print_plots(self):
-	
+        """
+        Enables ploting regarding ticket generation and treatment.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.plot_toggle.isChecked():
             print("Print the families plots!")
             self.generation_params["print_plots"] = True
         else:
             print("Not printing the families plot!")
             self.generation_params["print_plots"] = False
-    
-    # Changes the debug mode    
+        
     def pick_debug_method(self):
-	
+        """
+        Enables the debug mode.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.debug_toggle.isChecked():
             print("Debug Mode was activated!")
             self.generation_params["debug"] = True	
@@ -1392,9 +1805,15 @@ class SNOOKER(QMainWindow):
             print("Debug Mode not activated!")
             self.generation_params["debug"] = False
             
-    # Changes the ticket seasonality  
     def pick_ticket_seasonality(self, s):
-	
+        """
+        Enables ticket seasonality from real data.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.ticket_season_toggle.isChecked():
             print("Ticket Seasonality considered!")
             self.generation_params["ticket_seasonality_selector"] = True	
@@ -1402,38 +1821,50 @@ class SNOOKER(QMainWindow):
             print("Ticket Seasonality excluded!")
             self.generation_params["ticket_seasonality_selector"] = False
             
-    # Changes the ticket seasonality  
     def pick_ticket_growth(self):
-	
+        """
+        Enables ticket growth.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.ticket_growth_toggle.isChecked():
             print("Ticket growth activated!")
             self.generation_params["ticket_growth_selector"] = True	
-            self.ticket_growth_type.setEnabled(True)
             self.ticket_growth_doublespin.setEnabled(True)
         else:
             print("Ticket growth excluded!")
             self.generation_params["ticket_growth_selector"] = False
-            self.ticket_growth_type.setEnabled(False)
             self.ticket_growth_doublespin.setEnabled(False)
             
-    # Gets the address picked by the user
-    def pick_growth_type(self, i):
-        
-        if i == 1:
-            self.ticket_growth_doublespin.setEnabled(False)
-        else:
-            self.ticket_growth_doublespin.setEnabled(True)
-            
-        self.generation_params["ticket_growth_type"] = i
-        print("Growth type selected:", str(self.ticket_growth_type.currentText()))  
-            
-    # Updates ticket growth rate
     def update_growth_rate(self):
+        """
+        Updates ticket growth rate.
+
+        Returns
+        -------
+        None.
+
+        """
         print("Ticket growth rate:", round(self.ticket_growth_doublespin.value(), 2))
-        self.generation_params["ticket_growth_rate"] = round(self.ticket_growth_doublespin.value(), 2)  
+        self.generation_params["ticket_growth_rate"] = round(self.ticket_growth_doublespin.value(), 2) 
             
-    # Changes the escalation method
     def pick_escalation_method(self, escalation_widget):
+        """
+        Enables and updates escalation probability.
+
+        Parameters
+        ----------
+        escalation_widget : QWidget
+            Escalation widget.
+
+        Returns
+        -------
+        None.
+
+        """
 	
         if self.ticket_escalation_toggle.isChecked():
             print("Ticket Escalation enabled!")
@@ -1448,27 +1879,31 @@ class SNOOKER(QMainWindow):
             self.escalation_slider.setValue(0)
             self.escalation_rate_label.setText(f"Rate: {0}%")
                 
-    # Changes the family seasonality  
     def pick_family_seasonality(self):
-	
-        if not self.datasets_available:
-            n_families = len(self.generation_params["family_seasonality"]["January"].keys())
+        """
+        Updates familiy seasonality for the generation.
+
+        Returns
+        -------
+        None.
+
+        """
+        if self.family_season_toggle.isChecked():
+            print("Family Seasonality considered!")
+            self.generation_params["family_seasonality_selector"] = True	
         else:
-            n_families = len(self.generation_params["default_alert_pool"].keys())
-            print("number of families allowed:", n_families)
-        if self.family_number.text() != "":
-            if int(self.family_number.text()) <= n_families:
-                #print(fam_number.text())
-                if self.family_season_toggle.isChecked():
-                    print("The number of families is less or equal to real families. Family Seasonality considered!")
-                    self.generation_params["family_seasonality_selector"] = True	
-                else:
-                    print("Family Seasonality excluded!")
-                    self.generation_params["family_seasonality_selector"] = False
+            print("Family Seasonality excluded!")
+            self.generation_params["family_seasonality_selector"] = False
                     
-    # Changes the ticket seasonality  
     def update_techniques_seasonality(self):
-    
+        """
+        Enables/disables technique seasonality for the generation.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.duration_season_toggle.isChecked():
             print("Techniques Seasonality enabled!")
             self.generation_params["techniques_seasonality_selector"] = True	
@@ -1484,9 +1919,15 @@ class SNOOKER(QMainWindow):
             self.max_subtechnique_slider.setEnabled(True)
             self.max_subtechnique_cost_slider.setEnabled(True)
                     
-    # Changes the ticket similarity  
     def pick_ticket_similarity(self):
-	
+        """
+        Enables ticket similarity.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.similar_tickets_toggle.isChecked():
             print("Ticket similarity disabled!")
             self.treatment_params["ticket_similarity_selector"] = True	
@@ -1496,19 +1937,31 @@ class SNOOKER(QMainWindow):
             self.treatment_params["ticket_similarity_selector"] = False
             self.coordinated_attacks_groupbox.setEnabled(False)
                     
-    # Changes the ticket verification  
     def pick_ticket_verification_method(self):
-	
+        """
+        Enables ticket verification between operator and subfamily actions.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.verify_tickets_toggle.isChecked():
             print("Ticket verification disabled!")
             self.treatment_params["ticket_verification_selector"] = True	
         else:
             print("Ticket similarity enabled!")
             self.treatment_params["ticket_verification_selector"] = False
-            
-    # Changes the ip    
+               
     def pick_ip(self):
-	
+        """
+        Enables IP customization.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.ip_toggle.isChecked():
             print("IP included!")
             self.generation_params["ip_selector"] = True	
@@ -1518,8 +1971,15 @@ class SNOOKER(QMainWindow):
             self.generation_params["ip_selector"] = False
             self.ip_groupbox.setEnabled(False)
             
-    # Changes the tracking mode    
     def pick_suspicious_method(self):
+        """
+        Enables behaviour tracking in suspicious countries.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.track_behaviour_toggle.isChecked():
             print("Track suspicious behaviours enabled!")
             self.interface_params["suspicious_selector"] = True	
@@ -1528,9 +1988,16 @@ class SNOOKER(QMainWindow):
             print("Track suspicious behaviours disabled!")
             self.interface_params["suspicious_selector"] = False
             self.sus_countries_groupbox.setEnabled(False)
-            
-    # Changes the outlier mode    
+             
     def pick_outlier_method(self):
+        """
+        Enables outliers for ticket generation.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.outlier_toggle.isChecked():
             print("Outliers included!")
             self.interface_params["outlier_selector"] = True	
@@ -1540,113 +2007,159 @@ class SNOOKER(QMainWindow):
             self.interface_params["outlier_selector"] = False
             self.outlier_groupbox.setEnabled(False)
     
-    # Updates the escalation frequency  
     def update_escalation_rate(self):
+        """
+        Updates the escalation frequency.
+
+        Returns
+        -------
+        None.
+
+        """
         self.escalation_rate_label.setText(f"Rate: {self.escalation_slider.value()}%")
         self.generation_params["escalate_rate_percentage"] = self.escalation_slider.value()
         print("Escalation rate:", self.escalation_rate_label.text())
         
-    # Updates the subfamily probability  
-    def update_new_subfamily_rate(self):
-        self.subfamily_rate_label.setText(f"Rate: {self.subfamily_slider.value()/10:.1f}%")
-        self.generation_params["subfamily_rate_percentage"] = self.subfamily_slider.value()/10
-        print("New Subfamily probability:", self.generation_params["subfamily_rate_percentage"])
-        
-    # Updates the family probability  
-    def update_new_family_rate(self):
-        self.family_rate_label.setText(f"Rate: {self.family_slider.value()/10:.1f}%")
-        
-        self.generation_params["family_rate_percentage"] = self.family_slider.value()/10
-        print("New family probability:", self.generation_params["family_rate_percentage"])
-        
-# =============================================================================
-#     # Updates the coordinated attack frequency  
-#     def updateCoordinatedRate(self, rate):
-#         self.coordinated_attacks_rate_label.setText(f"Rate: {rate}%")
-#         Variables.coordinated_attack_percentage = rate
-# =============================================================================
-        
-    # Updates the subtechnique rate duration   
     def update_subtechnique_rate(self, slider, label):
+        """
+        Updates the subtechnique rate duration.
 
+        Parameters
+        ----------
+        slider : QSlider
+            Slider for probability management.
+        label : QLabel
+            Label of the selected probability.
+
+        Returns
+        -------
+        None.
+
+        """
         label.setText(f"Rate: {slider.value()}%")
         
         if label.objectName() == "min_sub":
-            #print("Min selected")
             self.generation_params["min_subtechnique_rate"] = slider.value()
             self.max_subtechnique_slider.setMinimum(slider.value() + 1)
         else:
-            #print("Max selected")
             self.generation_params["max_subtechnique_rate"] = slider.value()
             self.min_subtechnique_slider.setMaximum(slider.value() - 1)
             
-    # Updates the subtechnique cost   
     def update_subtechnique_cost(self, slider, label):
+        """
+        Updates the subtechnique cost.
+
+        Parameters
+        ----------
+        slider : QSlider
+            Slider for cost management.
+        label : QLabel
+            Label of the selected cost.
+
+        Returns
+        -------
+        None.
+
+        """
         label.setText(f"Cost: {slider.value()}")
         
         if label.objectName() == "min_sub_cost":
-            #print("Min selected")
             self.generation_params["min_subtechnique_cost"] = slider.value()
-            #print("Max selected")
             self.generation_params["max_subtechnique_cost"] = slider.value()
-
-        #print("Min cost", self.generation_params["min_subtechnique_cost"])
-        #print("Max cost", self.generation_params["max_subtechnique_cost"])
         
-    # Updates detection time range   
     def update_detection_timerange(self, slider, label):
-        
+        """
+        Updates detection time range.
+
+        Parameters
+        ----------
+        slider : QSlider
+            Slider for detection range management.
+        label : QLabel
+            Label of the selected timerange.
+
+        Returns
+        -------
+        None.
+
+        """
         label.setText(f"{slider.value()} minutes")
         
         if label.objectName() == "min_time_detection":
-            #print("Min selected")
             self.generation_params["min_coordinated_attack_minutes"] = slider.value()
         else:
-            #print("Max selected")
             self.generation_params["max_coordinated_attack_minutes"] = slider.value()
-
-        #print("Min time", self.generation_params["min_coordinated_attack_minutes"])
-        #print("Max time", self.generation_params["max_coordinated_attack_minutes"])
         
-    # Updates the outlier frequency  
     def update_outlier_rate(self):
+        """
+        Updates the outlier frequency.
+
+        Returns
+        -------
+        None.
+
+        """
         self.outlier_rate_output.setText(f"Frequency Rate: {self.outlier_slider.value()}%")
         self.generation_params["outlier_rate"] = self.outlier_slider.value()
-        
-    # Updates the outlier impact  
+          
     def update_outlier_value(self, val):
+        """
+        Updates the outlier impact.
+
+        Parameters
+        ----------
+        val : float
+            Value of outlier cost.
+
+        Returns
+        -------
+        None.
+
+        """
         print("Outlier Percentage:", val)
         self.generation_params["outlier_cost"] = val
         
-    # Updates the rate of suspicious subfamilies
     def update_country_subfamily(self, value):
+        """
+        Updates the rate of the appearance of suspicious subfamilies.
+
+        Parameters
+        ----------
+        value : float
+            Probability of a subfamily being suspicious.
+
+        Returns
+        -------
+        None.
+
+        """
         print("Suspicious Subfamilies Percentage:", round(value, 2))
         self.generation_params["suspicious_subfamily"] = round(value, 2)
         
     # Verifies if the input meet certain conditions
     def check_input(self, widget):
+        """
+        Check if the input is valid.
 
-        if widget.objectName() == "ticket_train":
+        Parameters
+        ----------
+        widget : QLineEdit
+            Widget with the parameter to be assessed.
+
+        Returns
+        -------
+        None.
+
+        """
+        if widget.objectName() == "n_tickets":
             if widget.text():
-                train_tickets = int(self.ticket_train_number.text())
-                #print("Train:", self.ticket_train_number.text())
-                if train_tickets < 1:
+                n_tickets = int(self.ticket_number.text())
+                if n_tickets < 1:
                     widget.setText("")
-                    InterfaceUtils.pop_message("Error", "The number of training tickets must be greater than 0!")
+                    InterfaceUtils.pop_message("Error", "The number of tickets must be greater than 0!")
                     return
                 else:
-                   self.generation_params['train_ticket'] = train_tickets
-                
-        elif widget.objectName() == "ticket_test":
-            if widget.text():
-                test_tickets = int(self.ticket_test_number.text())
-                #print("Test:", self.ticket_test_number.text())
-                if test_tickets < 1:
-                    widget.setText("")
-                    InterfaceUtils.pop_message("Error", "The number of test tickets must be greater than 0!")
-                    return
-                else:
-                   self.generation_params['test_ticket'] = test_tickets
+                   self.generation_params['n_tickets'] = n_tickets
 
         elif widget.objectName() == "family_number":
             if widget.text():
@@ -1654,6 +2167,7 @@ class SNOOKER(QMainWindow):
                 if not (1 <= families <= len(string.ascii_uppercase)):
                     widget.setText("")
                     self.selectable_families_combo.setEnabled(False)
+                    print("stop")
                     InterfaceUtils.pop_message("Error", f'Valid range of the number of families is 1-{len(string.ascii_uppercase)}')
                     return
                 else:
@@ -1663,17 +2177,20 @@ class SNOOKER(QMainWindow):
                     self.selectable_families_combo.setEnabled(True)
                     self.generation_params['families_number'] = families
                 
-                if not self.datasets_available:
+                if self.datasets_available and self.generation_params["family_seasonality"] != None:
                     n_families = len(self.generation_params["family_seasonality"]["January"].keys())
+                    print("Number of families in real data:", n_families)
                 else:
                     n_families = len(self.generation_params["default_alert_pool"].keys())
-                    #print("number of families allowed:", n_families)
+                    print("Number of families allowed:", n_families)
                 
-                if int(self.family_number.text()) <= n_families and not self.datasets_available:
+                if int(self.family_number.text()) <= n_families and self.datasets_available:
+                    print("The number of families is less or equal to real families!")
                     self.family_season_toggle.setEnabled(True)
                     self.family_season_toggle.setChecked(True)
                     self.generation_params["family_seasonality_selector"] = True
                 else:        
+                    print("Family Seasonality excluded! Number of families is greater than the number of families in real data.")
                     self.family_season_toggle.setEnabled(False)
                     self.family_season_toggle.setChecked(False)
                     self.generation_params["family_seasonality_selector"] = False
@@ -1791,27 +2308,56 @@ class SNOOKER(QMainWindow):
                     self.treatment_params['max_learning_counter'] = max_counter
                 
         # IF all are complete turn the button to green
-        if self.ticket_train_number.text() and self.ticket_test_number.text() and self.family_number.text() and self.min_subfamily_number.text() and self.max_subfamily_number.text() and self.technique_number.text() and self.min_subtechnique_number.text() and self.max_subtechnique_number.text() and self.min_counter_number.text() and self.max_counter_number.text():
+        if self.ticket_number.text() and self.family_number.text() and self.min_subfamily_number.text() and self.max_subfamily_number.text() and self.technique_number.text() and self.min_subtechnique_number.text() and self.max_subtechnique_number.text() and self.min_counter_number.text() and self.max_counter_number.text():
             self.generate_button.setProperty('ready', True)
             self.generate_button.setStyle(self.generate_button.style())
             self.generate_button.setEnabled(True)
 
-    # Updates probability of using the subfamily action
     def update_analyst_same_subfamily_action_prob(self, val):
+        """
+        Updates probability of using the subfamily action.
+
+        Parameters
+        ----------
+        val : float
+            Likelihood of using the subfamily action.
+
+        Returns
+        -------
+        None.
+
+        """
         print("The probability of using the subfamily action was changed to:", round(val, 2))
         self.treatment_params["analyst_subfamily_action_probability"] = val
         
-    # Updates probability of using the same action
     def update_analyst_same_action_prob(self, val):
+        """
+        Updates probability of using the same action.
+
+        Parameters
+        ----------
+        val : float
+            Likelihood of using the same action.
+
+        Returns
+        -------
+        None.
+
+        """
         print("The probability of using the same action was changed to:", round(val, 2))
         self.treatment_params["analyst_same_action_probability"] = val
             
-    # Generates the dataset according to the mode selected
     def check_generation(self):
+        """
+        Generates the dataset according to the mode selected.
+
+        Returns
+        -------
+        None.
         
+        """
         if self.generation_custom.isChecked():
-            print("Number of train tickets: ", self.ticket_train_number.text())
-            print("Number of test tickets: ", self.ticket_test_number.text())
+            print("Number of tickets: ", self.ticket_number.text())
             print("Number of Families: ", self.family_number.text())
             print("Types of Families: ", self.selected_families.text())
             print("Minimum number of Families: ", self.min_subfamily_number.text())
@@ -1821,15 +2367,35 @@ class SNOOKER(QMainWindow):
             print("Maximum number of sub techniques: ", self.max_subtechnique_number.text())
         else:
             self.generation_params["default_alert_pool"] = Configurator.read_configuration_section("Cybersecurity", "families")
-        self.call_generator("Cybersecurity", self.generation_params, self.treatment_params, self.countries_list, self.auxiliar_dataset_params)
+        self.call_generator("Cybersecurity", self.generation_params, self.treatment_params, self.countries_list, self.auxiliar_dataset_params, self.cpu_times_before, self.cpu_usage_before)
           
-    # Resumes the generation button after outputing the dataset          
     def reset_generator_button(self):
+        """
+        Resumes the generation button after outputing the dataset.
+
+        Returns
+        -------
+        None.
+
+        """
         self.generate_button.setEnabled(True)
         self.generate_button.setText("Generate")
+        self.progress_report.setText("")
             
-    # Closes all events
     def closeEvent(self, event):
+        """
+        Closes all events.
+
+        Parameters
+        ----------
+        event : event
+            Events running.
+
+        Returns
+        -------
+        None.
+
+        """
         # When the window is closed, stop the thread gracefullys
         for i in self.subwindows:
             i.close()
@@ -1843,16 +2409,46 @@ class SNOOKER(QMainWindow):
         event.accept()
         print("Application closed successfully!\n")
         
-    # Prints generator's success message
-    def onSuccess(self):
+    def on_success(self):
+        """
+        Prints generator's success message.
+
+        Returns
+        -------
+        None.
+
+        """
         print("Generation Complete!")
         
-    # Calls the Generator Class to build the dataset in a thread
-    def call_generator(self, domain, generation_params, treatment_params, countries, output_params):
-        
+    def call_generator(self, domain, generation_params, treatment_params, countries, output_params, start_cpu, cpu_usage_before):
+        """
+        Calls the Generator Class to build the dataset in a thread.
+
+        Parameters
+        ----------
+        domain : str
+            Domain selected (cybersecurity).
+        generation_params : dict
+            Comprises all data about parameters related to ticket generation.
+        treatment_params : dict
+            Comprises all data about parameters related to ticket treatment.
+        countries : dict
+            Comprises information about the countries collected from an external file.
+        output_params : dict
+            Comprises the column features that should be included in the generated datasets.
+        start_cpu : scpustimes
+            Comprises information about CPU time statistics.
+        cpu_usage_before : float
+            Percentage of total CPU time.
+
+        Returns
+        -------
+        None.
+
+        """
         self.thread_pool = QThreadPool.globalInstance()
-        self.generator = Generator(domain, generation_params, treatment_params, countries, output_params)
-        self.generator.signals.finished.connect(self.onSuccess)
+        self.generator = Generator(domain, generation_params, treatment_params, countries, output_params, start_cpu, cpu_usage_before)
+        self.generator.signals.finished.connect(self.on_success)
         self.generator.signals.finished.connect(self.reset_generator_button)  
         self.thread_pool.start(self.generator)
 
@@ -1860,22 +2456,31 @@ class SNOOKER(QMainWindow):
         self.generate_button.setText("Generating...")
         self.generate_button.setEnabled(False)
         
-    # Loads the Incidents Configurations
     def load_real_dataset(self):
+        """
+        Loads information from a dataset.
 
+        Returns
+        -------
+        None.
+
+        """
         self.fileButton.setEnabled(False)
-        path = "./Resources/RealDatasets/"
+        path = "./Resources/Datasets"
         self.file = Configurator.load_configuration_data(self, path)
         print("Filename:",  self.file)
         
-        if  self.file != "":            
-            _, file_extension = os.path.splitext(self.file)
-            print("File extension:", file_extension)
+        if self.file != "":            
+            filename, file_extension = os.path.splitext(self.file)
             if file_extension == '.csv' or file_extension == '.xlsx':
-                self.fileLineEdit.setText(self.file)
-                self.generation_params["ticket_seasonality"], self.generation_params["family_seasonality"], self.generation_params["family_mean_duration"], self.generation_params["family_mapping"] = Configurator.get_ticket_seasonality(None, self.file, None)
-                self.generation_params["ticket_seasonality_selector"], self.generation_params["family_seasonality_selector"], self.generation_params["techniques_seasonality_selector"] = True, True, False
-                self.family_season_toggle.setChecked(True)
+                self.file = os.path.basename(self.file)
+                print("File:", self.file)
+                self.fileButton.setText(self.file)
+                self.generation_params["ticket_seasonality"], self.generation_params["family_seasonality"], self.generation_params["family_mean_duration"], self.generation_params["family_mapping"], self.generation_params["real_family_probs"], self.generation_params["real_dataset"] = Configurator.get_ticket_seasonality(self.file, False, None, False)
+                self.generation_params["ticket_seasonality_selector"], self.generation_params["family_seasonality_selector"], self.generation_params["techniques_seasonality_selector"] = True, True, False    
+                self.family_season_toggle.setEnabled(True)
+                self.family_season_toggle.setChecked(True) 
+                self.ticket_season_toggle.setEnabled(True)
                 self.ticket_season_toggle.setChecked(True)
                 print("Real Dataset loaded successfully!")
             else:
@@ -1885,19 +2490,62 @@ class SNOOKER(QMainWindow):
             print("Operation Canceled")
             
         self.fileButton.setEnabled(True)
+        
+    def update_seasonality_widgets(self, is_real_data_available):
+        """
+        Updates seasonality widgets based on the presence of real data.
+
+        Parameters
+        ----------
+        is_real_data_available : bool
+            If there is real data involved or not.
+
+        Returns
+        -------
+        None.
+
+        """
+        if is_real_data_available:
+            if self.generation_params["family_mapping"] == None and self.file == "no real data!":
+                self.file = Utils.get_smallest_file("./Resources/Datasets/")
+                self.generation_params["ticket_seasonality"], self.generation_params["family_seasonality"], self.generation_params["family_mean_duration"], self.generation_params["family_mapping"], self.generation_params["real_family_probs"], self.generation_params["real_dataset"] = Configurator.get_ticket_seasonality(self.file, False, None, False)
+                self.generation_params["ticket_seasonality_selector"], self.generation_params["family_seasonality_selector"], self.generation_params["techniques_seasonality_selector"] = True, True, False    
+                self.family_season_toggle.setEnabled(True)
+                self.family_season_toggle.setChecked(True) 
+                self.ticket_season_toggle.setEnabled(True)
+                self.ticket_season_toggle.setChecked(True)
+        else:
+            self.generation_params["ticket_seasonality_selector"], self.generation_params["family_seasonality_selector"], self.generation_params["techniques_seasonality_selector"] = False, False, False    
+            self.generation_params["ticket_seasonality"], self.generation_params["family_seasonality"], self.generation_params["family_mean_duration"], self.generation_params["family_mapping"], self.generation_params["real_family_probs"], self.generation_params["real_dataset"] = None, None, None, None, None, None
+            self.family_season_toggle.setEnabled(False)
+            self.family_season_toggle.setChecked(False) 
+            self.ticket_season_toggle.setEnabled(False)
+            self.ticket_season_toggle.setChecked(False)
                
-# Initiates SNOOKER's application
 def call_application():
+    """
+    Initiates SNOOKER's application
+
+    Returns
+    -------
+    None.
+
+    """
     print("\014")
     os.chdir("../../")
 
+    cpu_times_before = psutil.cpu_times()
+    cpu_usage_before = psutil.Process().cpu_percent()
+    print(f'Initial memory usage: {psutil.Process().memory_info().rss  / (1024 * 1024)}')
+    
     app = QtCore.QCoreApplication.instance()
     myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     
     if app is None:
         app = QApplication(sys.argv)
-    win = SNOOKER()
+        
+    win = SNOOKER(cpu_times_before, cpu_usage_before)
 
     qr = win.frameGeometry()
     cp = QDesktopWidget().availableGeometry().center()

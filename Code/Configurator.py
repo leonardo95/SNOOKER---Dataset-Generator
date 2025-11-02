@@ -1,54 +1,115 @@
+"""
+Created on Fri Apr  2 12:10:27 2021
+
+@author: Leonardo Ferreira
+@goal: Reads the configuration file and manages several parameters for the generation
+"""
+
 from Code.Utils import Utils
+
 from PyQt5.QtWidgets import QFileDialog
-import os, string, random, ruamel.yaml, ijson
+import os, json, string, random, ijson, sys, pytz
 import pandas as pd
 from datetime import datetime
 import pendulum
 import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
+from ruamel.yaml import YAML
 
-class Configurator:    
-    # Reads the configuration file
+class Configurator:
     def read_configuration_file(domain, path):
+        """
+        Reads the configuration file
+
+        Parameters
+        ----------
+        domain : str
+            Generation Domain.
+        path : str
+            Path where the configuration file is located.
+
+        Returns
+        -------
+        config_data : dict
+            Comprises the data used for the generation and treatment of the datasets (retrieved from an external file).
+
+        """
         
         config_data = {}
         try:
+            yaml = YAML(typ='rt')
             with open(path, "r") as fh:
-                config_data = ruamel.yaml.load(fh, Loader=ruamel.yaml.RoundTripLoader)
+                config_data = yaml.load(fh)
                 return config_data
         except FileNotFoundError:
             print("Couldn't find configuration file!" )
             
-    # Checks if param exists in configuration file 
     def check_param_in_config(config, param):
+        """
+        Checks if param exists in configuration file.
+
+        Parameters
+        ----------
+        config : dict
+            Comprises the data used for the generation and treatment of the datasets.
+        param : str
+            Concrete attribute to be searched within config.
+
+        Returns
+        -------
+        bool
+            Existing or non-existent attribute.
+
+        """
 
         if param in config.keys():
             return True
         else:
             print(f'The config does not have the param {param}')
     
-    # Loads several parameters from the configuration file
     def load_configurations(domain):
+        """
+        Loads several parameters from the configuration file.    
 
+        Parameters
+        ----------
+        domain : str
+            Generation Domain.
+
+        Raises
+        ------
+        ValueError
+            if the configuration cannot be read and parsed.
+
+        Returns
+        -------
+        interface_params : dict
+            Comprises all configurations related to the interface.
+        generation_params : dict
+            Comprises all configurations related to the dataset generation (include multiple tickets).
+        treatment_params : dict
+            Comprises all configurations related to the ticket treatment.
+        suspicious_countries : dict
+            Comprises data related to countries characterized by potential suspicious activity.
+
+        """
         path =  f'Configurations/{domain}/Init_cfg.yaml'
         config_data = Configurator.read_configuration_file(domain, path)
-        #print("Config:", config_data)
+
         interface_params, generation_params, treatment_params = {}, {}, {}
         generation_params["suspicious_countries"] = {}
         
-        interface_params["multiple_attack_selector"], interface_params["outlier_selector"], interface_params["suspicious_selector"] = False, True, True
+        interface_params["outlier_selector"], interface_params["suspicious_selector"], interface_params["multiple_attack_selector"] = True, True, False
         generation_params["ip_selected_idx"], generation_params["format_selected_idx"] = 0, 0
         generation_params["family_selection"] = "Random"
-        generation_params["ip_selector"], generation_params["ticket_seasonality_selector"], generation_params["family_seasonality_selector"], generation_params["techniques_seasonality_selector"], generation_params["ticket_escalation_selector"], generation_params["ticket_growth_selector"] = True, True, True, False, True, True
+        generation_params["ip_selector"], generation_params["ticket_seasonality_selector"], generation_params["family_seasonality_selector"], generation_params["techniques_seasonality_selector"], generation_params["ticket_escalation_selector"] = True, True, True, False, True
         treatment_params["ticket_similarity_selector"], treatment_params["ticket_verification_selector"] = True, True
-
-        growth_operations = ["increase", "maintain", "decrease"]
-            
+        generation_params["ticket_growth_selector"] = True
         try:
             interface_params["generation_mode"] = config_data["generation_parameters"]["generation_mode"]
-            
-            generation_params['train_ticket'] = config_data["generation_parameters"]['train_ticket']
-            generation_params['test_ticket'] = config_data["generation_parameters"]['test_ticket']
-            generation_params['ticket_growth_type'] = config_data["generation_parameters"]['ticket_growth_type']
+            generation_params['n_tickets'] = config_data["generation_parameters"]['n_tickets']
             generation_params['ticket_growth_rate'] = config_data["generation_parameters"]['ticket_growth_rate']
             generation_params['families_number'] = config_data["generation_parameters"]['families_number']
             generation_params['minsubfamilies_number'] = config_data["generation_parameters"]['minsubfamilies_number']
@@ -56,15 +117,13 @@ class Configurator:
             generation_params['techniques_number'] = config_data["generation_parameters"]['techniques_number']
             generation_params['minsubtechniques_number'] = config_data["generation_parameters"]['minsubtechniques_number']
             generation_params['maxsubtechniques_number'] = config_data["generation_parameters"]['maxsubtechniques_number']
+            generation_params['max_transfer_steps'] = config_data["generation_parameters"]['max_transfer_steps']
             generation_params['seed'] = config_data["generation_parameters"]['seed']
             generation_params["start_date"] = config_data["generation_parameters"]["start_date"]
             generation_params["end_date"] = config_data["generation_parameters"]["end_date"]
-            generation_params["test_timerange"] = config_data["generation_parameters"]["test_timerange"]
             generation_params["outlier_rate"] = config_data["generation_parameters"]['outlier_rate']
             generation_params["outlier_cost"] = config_data["generation_parameters"]['outlier_cost']
             generation_params["escalate_rate_percentage"] = config_data["generation_parameters"]['escalate_rate_percentage']
-            generation_params["family_rate_percentage"] = config_data["generation_parameters"]['family_rate_percentage']
-            generation_params["subfamily_rate_percentage"] = config_data["generation_parameters"]['subfamily_rate_percentage']
             generation_params["min_coordinated_attack"] = config_data["generation_parameters"]['min_coordinated_attack']
             generation_params["max_coordinated_attack"] = config_data["generation_parameters"]['max_coordinated_attack']
             generation_params["min_coordinated_attack_minutes"] = config_data["generation_parameters"]['min_coordinated_attack_minutes']
@@ -76,7 +135,6 @@ class Configurator:
             generation_params["suspicious_subfamily"] = config_data["generation_parameters"]['suspicious_subfamily']
             generation_params["clients_number"] = config_data["generation_parameters"]['clients_number']
             generation_params["distribution_mode"] = config_data["generation_parameters"]["distribution_mode"]
-            generation_params["prioritize_lower_teams"] = config_data["generation_parameters"]["prioritize_lower_teams"]
             generation_params["reset_analysts_data"] = config_data["generation_parameters"]["reset_analysts_data"]
             generation_params["balanced_shifts"] = config_data["generation_parameters"]["balanced_shifts"]
             generation_params["debug"] = config_data["generation_parameters"]["debug"]
@@ -86,16 +144,17 @@ class Configurator:
             generation_params["time_equal_probabilities"] = config_data["generation_parameters"]["time_equal_probabilities"]
             generation_params["week_equal_probabilities"] = config_data["generation_parameters"]["week_equal_probabilities"]
             generation_params["max_priority_levels"] = config_data["generation_parameters"]["max_priority_levels"]
+            generation_params["with_ip"] = config_data["generation_parameters"]['with_ip']
             generation_params["action_operations"] = config_data["action_operations"]
             generation_params["ips_pool"] = config_data["ips_pool"]
             generation_params["default_alert_pool"] = config_data["families"]
             generation_params["family_time_4h"] = config_data["family_time_4h"]
             generation_params["week_time"] = config_data["week_time"]
+            generation_params["day_ticket_spikes"] = config_data["day_ticket_spikes"]
             generation_params["analysts_skills"] = config_data["analysts_info"]
-            generation_params["teams_frequency"] = config_data["teams_freq"]
             
             treatment_params["day_stages"] = config_data["day_stages"]
-            treatment_params["shifts"] = config_data["shifts"]
+            generation_params["shifts"] = config_data["generation_parameters"]["shifts"]
             treatment_params["analyst_subfamily_action_probability"] = config_data["generation_parameters"]['analyst_subfamily_action_probability']
             treatment_params["analyst_same_action_probability"] = config_data["generation_parameters"]['analyst_same_action_probability']
             treatment_params["actions_similarity"] = config_data["generation_parameters"]['actions_similarity']
@@ -108,51 +167,125 @@ class Configurator:
             if str(e).find("generation"):
                 interface_params["suspicious_selector"] = False	
             raise ValueError(f'Could not load {domain} configuration file. Error {e}')
-            
-        if generation_params['ticket_growth_type'] not in growth_operations:
-            raise ValueError(f"Invalid ticket growth operation! Options are {growth_operations}")
-        
+
+        if generation_params['ticket_growth_rate'] == 0:
+            generation_params["ticket_growth_selector"] = False
+
         print("Cybersecurity configuration file successfully loaded!") 
-        #print(suspicious_countries)
-
         return interface_params, generation_params, treatment_params, suspicious_countries
-        
-    # Updates the configuration file
-    def update_configuration_data(param, content, domain, path):
 
+    def update_configuration_data(param, content, domain, path):
+        """
+        Updates the configuration file.
+
+        Parameters
+        ----------
+        param : str
+             Attribute to be updated.
+        content : dict
+            Updated content.
+        domain : str
+            Domain of the configuration file.
+        path : str
+            Path of the configuration file to be updated.
+
+        Returns
+        -------
+        None.
+
+        """
         config_data = Configurator.read_configuration_file(domain, path)
         config_data[param].update(content)
         
+        yaml = YAML(typ='rt')
         with open(path, 'w') as f:
-            ruamel.yaml.dump(config_data, f, Dumper=ruamel.yaml.RoundTripDumper)
+            yaml.dump(config_data, f)
         print(f'{domain} custom configuration saved!')
 
-    # Reads a particular part of the configuration file
+
     def read_configuration_section(domain, section):
-        
+        """
+        Reads a particular part of the configuration file.        
+
+        Parameters
+        ----------
+        domain : str
+            Domain of the configuration file.
+        section : str
+            Section to be read.
+
+        Returns
+        -------
+        TYPE
+            Content of the section requested.
+
+        """
         path = f'Configurations/{domain}/Init_cfg.yaml'
         config_data = Configurator.read_configuration_file(domain, path)
         
         return config_data[section] 
                  
-    # Shows a QFileDialog window and picks the configuration file
     def load_configuration_data(window, path):
-        
+        """
+        Shows a QFileDialog window and picks the configuration file.
+
+        Parameters
+        ----------
+        window : TeamAnalystWindow
+            Window where the data is requested.
+        path : str
+            Path of the configuration file.
+
+        Returns
+        -------
+        filename : dict
+            Comprises all the information present in the configuration file.
+
+        """
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         filename, _ = QFileDialog.getOpenFileName(window, "Open File", path, "", options=options)
         return filename
     
-    # Shows a QFileDialog window and stores the configuration file
     def save_dialog(window):
-        
+        """
+        Shows a QFileDialog window and stores the configuration file.
+
+        Parameters
+        ----------
+        window : TeamAnalystWindow
+            Window where the data is updated.
+
+        Returns
+        -------
+        filename : dict
+            Comprises all the information present in the configuration file.
+
+        """
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getSaveFileName(window, 'Save as... File', 'Custom_cfg', filter="YAML (*.yaml)",options=options)
         return filename
     
-    # Stores the configurations set by the user
     def save_new_config_file(domain, param, content, new_file):
-    
+        """
+        Stores a new configuration file defined by the user
+
+        Parameters
+        ----------
+        domain : str
+            Generation domain.
+        param : str
+            Attribute being created.
+        content : dict
+            Content of the attribute added.
+        new_file : str
+            Name of the new configuration file.
+
+        Returns
+        -------
+        None.
+
+        """
         path =  f'Configurations/{domain}/Init_cfg.yaml'
         config_data = Configurator.read_configuration_file(domain, path)
         
@@ -162,9 +295,23 @@ class Configurator:
             
         print("New configuration file saved!")
     
-    # Gets the countries and their IPs
     def get_countries_data(path, countries_picked):
-        
+        """
+        Gets the countries and their IPs.
+
+        Parameters
+        ----------
+        path : str
+            Countries file path.
+        countries_picked : list
+            List of countries to be used in the generation.
+
+        Returns
+        -------
+        countries : dict
+            Comprises the countries and information regarding their timezones and IPs.
+
+        """    
         countries = {}
         with open(path, "rb") as f:
             for countries_data in ijson.items(f, "countries"):
@@ -179,9 +326,21 @@ class Configurator:
                         
         return countries
     
-    # Gets the names of the countries
     def get_countries_names(path):
-        
+        """
+        Gets the name of the countries.
+
+        Parameters
+        ----------
+        path : str
+            Countries file path.
+
+        Returns
+        -------
+        countries : list
+            List of the countries names.
+
+        """
         countries = []
         with open(path, "rb") as f:
             for countries_data in ijson.items(f, "countries"):
@@ -189,13 +348,27 @@ class Configurator:
         #print("Countries:", countries)
         return countries
 
-    # Fixes null families and subfamilies
     def solve_family_anomalies(dataset):
-        
-        incidents_info = dataset.groupby(['Family', 'Subfamily']).size()
-        #print(incidents_info)
+        """
+        Handles null families and subfamilies in the real dataset.
 
+        Parameters
+        ----------
+        dataset : dataframe
+            Dataframe of the real dataset.
+
+        Returns
+        -------
+        test_dict : dict
+            Dataset in dict format.
+        dataset : dataframe
+            Updated dataset.
+
+        """
         families_info = {}
+        incidents_info = dataset.groupby(['Family', 'Subfamily']).size()
+        test_dict = dataset.to_dict("index")
+
         for incident_data, count in incidents_info.items():
             if count != 0:
                 family = incident_data[0]
@@ -204,7 +377,6 @@ class Configurator:
                     families_info[family] = []
                 if incident_data not in families_info[family]:
                     families_info[family].append(subfamily)
-        test_dict = dataset.to_dict("index")
 
         for i in test_dict:
             if pd.isnull(test_dict[i]['Family']):
@@ -228,23 +400,48 @@ class Configurator:
                     
         return test_dict, dataset
     
-    # Converts timestamps into pendulum instances
     def convert_timestamps(list_):
-        
+        """
+        Converts timestamps into pendulum instances (if possible).
+
+        Parameters
+        ----------
+        list_ : list
+            Timestamps of the steps used in ticket treatment.
+
+        Returns
+        -------
+        temp: list
+            Updated list of timestamps with correct format.
+
+        """
         temp = []
         if len(list_) != 1:
             for k in list_:
                 try:
+                    #print(k)
                     dt_object = pendulum.from_timestamp(int(float(k)))
                     temp.append(dt_object.replace(tzinfo=None))
                 except:
                     return []
         return temp
     
-    # Checks null and timestamp format 
     def convert_timestamp_to_datetimelist(timestamps):
+        """
+        Checks for null and wrong timestamp format.     
+
+        Parameters
+        ----------
+        timestamps : str
+            Timestamps to be analyzed.
+
+        Returns
+        -------
+        result : list
+            Timestamps with the correct format.
+
+        """
         
-        #print(timestamps)
         if pd.isnull(timestamps):
             result = -1
         else:
@@ -257,14 +454,29 @@ class Configurator:
                 result = 0
         return result
     
-    # Fixes null timestamps
     def solve_timestamp_anomalies(dataset, temp_dict, subfamilies_mean):
+        """
+        Fixes anomalies with the timestamps    
 
-        raised, ticket_durations = [], []
+        Parameters
+        ----------
+        dataset : dataset
+            Dataset being analyzed.
+        temp_dict : dict
+            Dataset in dict format for easier attribute access.
+        subfamilies_mean : dict
+            Comprises information about the time spent and number of occorrences of each subfamily.
+
+        Returns
+        -------
+        dataset : dataframe
+            Updated dataframe.
+
+        """
+        ticket_durations, raised = [], []
 
         for i in temp_dict:
             if temp_dict[i]['Steps'] == -1:
-                #print(temp_dict[i])
                 print("Index:", i)
                 subfamily = temp_dict[i]["Subfamily"]
                 sub_mean = int(subfamilies_mean[subfamily]["time_spent"] / subfamilies_mean[subfamily]["count"])
@@ -283,21 +495,51 @@ class Configurator:
                 minutes = round(time_diff.total_seconds() / 60)
                 ticket_durations.append(minutes)
                 raised.append(min_date)
-        
+            
         dataset["Ticket Duration"] = ticket_durations
         dataset["raised"] = raised
         return dataset
     
-    # Gets the duration of a ticket
     def get_ticket_duration(start, end, subfamily):
-        
+        """
+        Gets the total duration of a ticket    
+
+        Parameters
+        ----------
+        start : int
+            First step timestamp.
+        end : int
+            Last step timestamp.
+        subfamily : str
+            Subfamily being analyzed.
+
+        Returns
+        -------
+        minutes : int
+            Ticket duration in minutes.
+
+        """
         time_diff = end - start
         minutes = round(time_diff.total_seconds() / 60)
         return minutes
     
-    # Gets the mean of each subfamily
-    def get_subfamilies_mean(dataset, temp_dict, without_nan):
+    def get_subfamilies_mean(dataset, temp_dict):
+        """
+        Gets the mean of each subfamily.    
 
+        Parameters
+        ----------
+        dataset : dataframe
+            Dataset being analyzed.
+        temp_dict : dict
+            Dataset in dict format for easier access.
+
+        Returns
+        -------
+        subfamilies_mean : dict
+            Comprises information about the time spent and number of occorrences of each subfamily.
+
+        """
         subfamilies_mean = {}
         all_subfamilies = dataset['Subfamily'].unique()
         all_subfamilies = [item for item in all_subfamilies if not(pd.isnull(item)) == True]
@@ -324,7 +566,6 @@ class Configurator:
                 
         avg = 0
         for subfamily in subfamilies_mean:
-            #print("Subfamily:", subfamilies_mean[subfamily])
             avg += subfamilies_mean[subfamily]["time_spent"] /subfamilies_mean[subfamily]["count"]
 
         avg = avg/len(subfamilies_mean)
@@ -334,16 +575,46 @@ class Configurator:
                 subfamilies_mean["time_spent"] = avg
                 subfamilies_mean["count"] = 1
                
-        #print("Subfamilies mean:", subfamilies_mean)
         return subfamilies_mean
         
-    # Gets the seasonality of the real dataset. The seasonality of each family over the year is converted in probability weights
-    # Beware that the real dataset should be processed and cleaned
-    def get_ticket_seasonality(source, file, connection):
-        
+    def get_ticket_seasonality(filename, is_database, connection, show_real_data):
+        """
+        Gets the seasonality of the real dataset (either from databases or custom samples).
+        The seasonality of each family over the year is converted in probability weights.
+        BEWARE! MUST be adapted to the real dataset explored (processed and cleaned).
+        Other classes require changing of names used to link with real data processed.
+
+        Parameters
+        ----------
+        filename : str
+            Name of the file.
+        is_database : bool
+            If it is a database or not (csv or excel).
+        connection : SQLConnectionWindow
+            Connection is established in SQLConnectionWindow using psycopg2.
+        show_real_data : bool
+            Plot or not the real data.
+
+        Returns
+        -------
+        ticket_seasonality: dict
+            Comprises the daily seasonality of the real tickets.
+        family_seasonality: dict
+            Comprises the monthly seasonality of the real families.
+        family_mean_duration: dict
+            Comprises the mean duration of each family.
+        mapping: dict
+            Comprises the families and the encoded families.
+        real_family_probs: dict
+            Comprises the probabilities of the real families.
+        real_dataset: dataframe
+            Refers to the updated real dataset (maped families).
+
+        """
         ticket_seasonality, family_seasonality, family_mean_duration = {}, {}, {}
+        n_col = 1
         
-        if source == "DATABASE":   
+        if is_database:   
             ### Change according to existing database
             cursor = connection.cursor()
             columns_to_read = ['ID', 'Subfamily', 'discovered_date', 'end_date', 'operator_action_timestamps']
@@ -356,46 +627,46 @@ class Configurator:
             dataset['Family'] = dataset['Subfamily'].apply(lambda x: x.split("-")[0])
         else:
             columns_to_read = ['ref_num', 'discovered_date', 'end_date', 'category', 'alert_code', 'time_stamp']
-            if ".xlsx" in file:
-                dataset = pd.read_excel(file, usecols=columns_to_read, index_col=None)
+            filepath = "./Resources/Datasets/" + filename 
+            if ".xlsx" in filename:
+                dataset = pd.read_excel(filepath, usecols=columns_to_read, index_col=None)
             else:
-                dataset = pd.read_csv(file, usecols=columns_to_read, index_col=None, sep=";")
+                dataset = pd.read_csv(filepath, usecols=columns_to_read, index_col=None, sep=";")
             dataset.rename(columns={'ref_num': 'ID', 'category': 'Family', 'alert_code': 'Subfamily', 'time_stamp': 'Steps'}, inplace = True)
-            dataset = dataset[(dataset['ID'] != "ethernet1/2")]
 
-        dataset['Family'] = dataset['Family'].astype("category")
         dataset['ID'] = dataset['ID'].astype(np.int32)
+        dataset['Family'] = dataset['Family'].astype("category")
         dataset['Subfamily'] = dataset['Subfamily'].astype("category")
-        print("Dataset Size:", dataset.shape[0])    
+        
+        dataset.rename(columns={'raised': 'Raised (UTC)'}, inplace = True)
         dataset.rename(columns={'discovered_date': 'Raised (UTC)', 'end_date': 'Fixed'}, inplace = True)
         dataset = dataset.dropna(subset=['Steps', 'Family', 'Subfamily'], how= "all")
         
         dataset['Steps'] = dataset['Steps'].apply(Configurator.convert_timestamp_to_datetimelist)
-        #print("length:", dataset.shape[0])
         dataset = dataset[dataset['Steps'] != 0]
+        print("length:", dataset.shape[0])
         
         temp_dict, dataset = Configurator.solve_family_anomalies(dataset)
-        subfamilies_mean = Configurator.get_subfamilies_mean(dataset, temp_dict, False)
+        subfamilies_mean = Configurator.get_subfamilies_mean(dataset, temp_dict)
         dataset = Configurator.solve_timestamp_anomalies(dataset, temp_dict, subfamilies_mean)
         dataset["raised"] = pd.to_datetime(dataset['raised'], dayfirst=True)
         
         dataset.sort_values(by='raised', inplace=True)
         dataset['Year/month'] = dataset['raised'].apply(lambda x: datetime.strftime(x, '%m'))
         family_duration_distribution = dataset.groupby('Family')['Ticket Duration'].mean().reset_index(name="mean")
-        #print("Original Mean Time spent:", family_duration_distribution)
         family_duration_distribution['mean'] = family_duration_distribution['mean'].apply(lambda x: x*0.1)
-        #print("Real Scaled Mean Time spent:", family_duration_distribution)
         family_mean_duration = family_duration_distribution.set_index('Family')['mean'].to_dict()
-        #print("Mean duration:", family_mean_duration)
-
         family_distribution = dataset.groupby(['Year/month', 'Family']).size().reset_index(name="Count")
-        ticket_seasonality["high_season"], ticket_seasonality["off_season"] = {}, {}
-        ticket_seasonality["high_season"]["ticket"], ticket_seasonality["off_season"]["ticket"] = 0, 0
-        
-        ticket_series = dataset['Year/month'].value_counts()
+        daily_tickets = dataset.groupby(dataset['raised'].dt.strftime('%m-%d')).size().reset_index(name='ticket_count')
+        daily_tickets.columns = ['Month_day', 'Ticket_count']
 
-        ticket_seasonality = Configurator.get_high_low_seasonlity(len(dataset), ticket_series, ticket_seasonality)
-        #print(family_distribution)
+        ticket_series = dataset['Year/month'].value_counts()
+        ticket_series = ticket_series.sort_index()
+        ticket_seasonality = Configurator.get_daily_probabibilies(len(dataset), daily_tickets)
+        
+        has_one_year_data, all_day_month_combinations = Configurator.check_real_dataset_completeness(dataset, daily_tickets)
+        if not has_one_year_data:
+            ticket_seasonality = Configurator.interpolate_missing_data(ticket_seasonality, all_day_month_combinations)
         
         for index, row in family_distribution.iterrows():    
             month = int(row["Year/month"])
@@ -407,44 +678,199 @@ class Configurator:
              
             ticket_number = ticket_series.get(key = row["Year/month"])
             family_seasonality[month_name][family] = row["Count"]/ticket_number
-        
-        #print("Dataset size:", dataset.shape[0])
+            
         all_families = dataset['Family'].unique()
         for l in family_seasonality.keys():
-            #print("Month", l)
             for fam in all_families:
                 if fam not in family_seasonality[l]:
                     family_seasonality[l][fam] = 0
                 
         mapping = Utils.encode_families(list(dataset['Family'].unique()))
+        real_family_probs, real_dataset = Configurator.plot_real_data(dataset, family_duration_distribution, n_col, mapping, show_real_data)
 
-        return ticket_seasonality, family_seasonality, family_mean_duration, mapping
+        return ticket_seasonality, family_seasonality, family_mean_duration, mapping, real_family_probs, real_dataset
+
+    def check_real_dataset_completeness(dataset, daily_tickets):
+        """
+        Checks if the real dataset has missing data in terms of dates.
+
+        Parameters
+        ----------
+        dataset : dataframe
+            Real dataset.
+        daily_tickets : dataframe
+            Dataset with two columns (Month-day and ticket count).
+
+        Returns
+        -------
+        bool
+            Has or does not have one year full of data.
+        all_day_month_combinations : list
+            List of month-day combinations.
+
+        """
+        start_date = dataset['raised'].min()
+        full_year_start_date = pd.Timestamp(year=start_date.year, month=1, day=1)
+        #print("Full year start date:", full_year_start_date)
+        full_year_end_date = pd.Timestamp(year=start_date.year, month=12, day=31)
+        #print("Full year end date:", full_year_end_date)
+        
+        date_range = pd.date_range(start=full_year_start_date, end=full_year_end_date, freq="D")
+        all_day_month_combinations = [date.strftime('%m-%d') for date in date_range]
+        #print("All day combinations:", all_day_month_combinations)
+        
+        existing_day_months = daily_tickets['Month_day'].tolist()
+        #print("Existing_day_months:", existing_day_months)
+        missing_day_months = [day for day in all_day_month_combinations if day not in existing_day_months]
+
+        if not missing_day_months:
+            print("Dataset has one year worth of data")
+            return True, all_day_month_combinations
+        else:
+            print("Dates missing:", missing_day_months)
+            return False, all_day_month_combinations
+        
+    def interpolate_missing_data(ticket_seasonality, all_day_months):
+        """
+        Interpolates missing data using the iterative imputer (MICE).
+
+        Parameters
+        ----------
+        ticket_seasonality : dict
+            Comprises information about existing month-day combinations (prob and number of tickets).
+        all_day_months : list
+            List of month-day combinations.
+
+        Returns
+        -------
+        Dataframe
+            Updated dataframe with interpolated missing dates.
+
+        """
+        df = pd.DataFrame.from_dict(ticket_seasonality, orient='index').reset_index()
+        df.columns = ['day_month', 'probability', 'ticket_count']
     
-    # Gets High and Low season in term of ticket volume
-    def get_high_low_seasonlity(dataset_size, ticket_series, ticket_seasonality):
+        full_df = pd.DataFrame({'day_month': list(all_day_months)})
+        merged_df = full_df.merge(df, on='day_month', how='left')
         
-        ranked_months = ticket_series.rank(method='first')
-        #print(ranked_months)
-        median_rank = ranked_months.median()
+        non_numeric = merged_df[['day_month']]
+        numeric = merged_df[['probability', 'ticket_count']]
         
-        high_seasonality_months = sorted(ranked_months[ranked_months > median_rank].index.tolist())
-        #print("High months:", high_seasonality_months)
-        #print("N tickets in High months:", ticket_series[high_seasonality_months].sum())
-        low_seasonality_months = sorted(ranked_months[ranked_months <= median_rank].index.tolist())
-        #print("Low months:", low_seasonality_months)
-        #print("N tickets in High months:", ticket_series[low_seasonality_months].sum())
+        imputer = IterativeImputer(max_iter=10, random_state=42)
+        imputed_array = imputer.fit_transform(numeric)        
+        merged_df = pd.concat([non_numeric, pd.DataFrame(imputed_array, columns=numeric.columns)], axis=1)
         
-        ticket_seasonality["off_season"]["ticket"] = ticket_series[low_seasonality_months].sum()
-        ticket_seasonality["high_season"]["ticket"] = ticket_series[high_seasonality_months].sum()
-        ticket_seasonality["off_season"]["months"] = [int(month) for month in low_seasonality_months]
-        ticket_seasonality["high_season"]["months"] = [int(month) for month in high_seasonality_months]
-        ticket_seasonality["off_season"]["prob"] = ticket_seasonality["off_season"]["ticket"]/dataset_size  
-        ticket_seasonality["high_season"]["prob"] = ticket_seasonality["high_season"]["ticket"]/dataset_size
+        return merged_df.set_index('day_month')['probability'].apply(lambda x: {'prob': x}).to_dict()
+
+    def get_daily_probabibilies(dataset_size, daily_tickets):
+        """
+        Gets the probability of the tickets in each month-day.
+
+        Parameters
+        ----------
+        dataset_size : int
+            Size of the dataset.
+        daily_tickets : TYPE
+            Dataset with two columns (Month-day and ticket count).
+
+        Returns
+        -------
+        ticket_seasonality : dict
+            Comprises information about existing month-day combinations (prob and number of tickets).
+
+        """
+
+        ticket_seasonality = {}
         
+        for row in daily_tickets.itertuples(index=False):
+            ticket_seasonality[row.Month_day] = {}
+            ticket_seasonality[row.Month_day]["prob"] = row.Ticket_count/dataset_size
+            ticket_seasonality[row.Month_day]["n_tickets"] = row.Ticket_count
+
         return ticket_seasonality
+    
+    def plot_real_data(dataset, family_duration_distribution, n_col, mapping, plot_data):
+        """
+        Plots real families's frequency over the year
+
+        Parameters
+        ----------
+        dataset : Dataframe
+            Real dataset.
+        family_duration_distribution : Dataframe
+            Dataset containing the mean duration of each family
+        n_col : int
+            Column to read.
+        mapping : dict
+            Comprises the families and the encoded families.
+        plot_data : bool
+            Plot or not the real data patterns (mean family duration and family distribution).
+
+        Returns
+        -------
+        family_probs_data : dict
+            Comprises the probability of each real family.
+        dataset : dataframe
+            Updated real dataset.
+
+        """
+        inverse_mapping = {v: k for k, v in mapping.items()}
+        dataset["Family"] = dataset["Family"].map(inverse_mapping)
+        family_probs_data = dataset['Family'].value_counts(normalize=True).sort_index()
         
-    # Gets the suspicious IPs
+        if plot_data:
+            freq = dataset.pivot_table(index="Year/month", columns="Family", aggfunc="size", fill_value=0)
+        
+            families = sorted(freq.columns)
+            months = freq.index
+            cumulative = np.zeros(len(months))
+            freq = freq[families]
+        
+            a4_dims = (30, 12)
+            fig, ax = plt.subplots(figsize=a4_dims)
+            for family in families:
+                plt.barh(months, freq[family], left=cumulative, label=family)
+                cumulative += freq[family]
+        
+            plt.xlabel("Ticket Frequency")
+            plt.ylabel("Months")
+            plt.xlim(0, 830)
+            plt.title("Stacked Horizontal Bar Chart of Family Frequency by Year/Month")
+            plt.legend(fontsize = 24, bbox_to_anchor=(1.01, 0.5) , loc='center left', ncol= n_col, borderaxespad=0.,)
+            plt.tight_layout()
+            plt.savefig('Plots\\real_families_month.svg', format="svg")
+            plt.show()
+            
+            a4_dims = (25, 12)
+            fig, axs = plt.subplots(figsize=a4_dims)
+            axs.bar(family_duration_distribution['Family'], family_duration_distribution['mean'])
+            
+            for tick in axs.get_xticklabels():
+                tick.set_rotation(45)
+                
+            xticks_positions = np.arange(len(family_duration_distribution['Family']))
+            xticks_labels = family_duration_distribution['Family']
+            axs.set_xticks(xticks_positions)
+            axs.set_xticklabels(xticks_labels, fontsize=10, ha='right')
+        
+            axs.set_title("Real Families Mean Duration")
+            axs.set_xlabel("Timerange", fontsize=12)
+            axs.set_ylabel("Time (seconds)", fontsize=12)
+            plt.savefig('Plots\\real_mean_fix_duration.png', bbox_inches='tight')
+            plt.show()
+        
+        return family_probs_data, dataset
+        
     def get_suspicious_ips():
+        """
+        Gets the suspicious IPs.
+
+        Returns
+        -------
+        suspicious_ips : dict
+            Comprises information regarding suspicious IPs.
+
+        """
         path = 'Resources/Ips/bad_ips.txt'
         print(f'Suspicious file Size is {os.stat(path).st_size / (1024 * 1024)} MB')
         suspicious_ips = {}
@@ -455,9 +881,26 @@ class Configurator:
                 
         return suspicious_ips
 
-    # Gets the special operations - initiate, end, and transfer
-    def get_special_steps(n_transfer_steps):
-        
+    def instantiate_special_steps(max_transfer_steps):
+        """
+        Builds the special operations - initiate, end, and transfer.        
+
+        Parameters
+        ----------
+        max_transfer_steps : int
+            Maximum number of transfer steps.
+
+        Raises
+        ------
+        ValueError
+            if max_transfer_steps < 1.
+
+        Returns
+        -------
+        special_steps : dict
+            Comprises information about special steps.
+
+        """
         special_steps = {}
         special_steps["init_opt"], special_steps["end_opt"], special_steps["transfer_opt"] = {}, {}, {}
 
@@ -470,11 +913,10 @@ class Configurator:
 
         transfer_op = random.choice([tec for tec in techniques_pool if (tec not in init_techniques_pool and tec not in end_techniques_pool)])
             
-        if n_transfer_steps < 1:
+        if max_transfer_steps < 1:
             raise ValueError("There must be transfer steps")
         else:
-            special_steps["transfer_opt"][transfer_op] = random.randint(1, n_transfer_steps)
-            #print("Special techniques techniques:", special_steps)
+            special_steps["transfer_opt"][transfer_op] = random.randint(1, max_transfer_steps)
         
         subtechniques_used = []
         for i in init_techniques_pool:
