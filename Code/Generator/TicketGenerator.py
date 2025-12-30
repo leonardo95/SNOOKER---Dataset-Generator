@@ -519,7 +519,7 @@ class TicketGenerator:
             Utils.debug_and_log_data(self.aux_data.debug, self.aux_data.logger, f'Ticket id: {i}') 
             subfamily = dataset[i]["subfamily"]            
             dataset[i]['team'] = self.subfamily_pool[subfamily]["assigned team"]
-            if dataset[i]['team'] == "L4":
+            if dataset[i]['team'] == list(self.analysts_info.keys())[-1]:
                 if 'escalate' in dataset[i]:
                     dataset[i]['escalate'] = False
                     

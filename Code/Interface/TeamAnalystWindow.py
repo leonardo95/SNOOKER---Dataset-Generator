@@ -33,7 +33,7 @@ class TeamAnalystWindow(QScrollArea):
         *args : str
             Parameters related to window identification (domain and window type).
         **kwargs : str
-            domain - cybersecurity; window type - Analysts.
+            Window type - Analysts, Domain - cybersecurity
 
         Returns
         -------
@@ -44,7 +44,7 @@ class TeamAnalystWindow(QScrollArea):
         self.args = args
         self.kwargs = kwargs
         self.parent_windows = self.args[0]
-        self.type = self.args[1]
+        self.domain = self.args[2]
         
         self.setWindowIcon(QtGui.QIcon('./Resources/Icons/tkinter_icon.ico'))
         InterfaceUtils.set_widgets_style(self, "Styles\style.css")
@@ -357,8 +357,6 @@ class TeamAnalystWindow(QScrollArea):
         """
         message = ""
         for team in self.custom_teams.keys():
-            shifts_available = list(self.parent_windows.treatment_params["shifts"].keys())
-            
             if len(self.custom_teams[team]['analysts']) < 1:
                 message = f'{message}Team {team}'
                 if team is list(self.custom_teams.keys())[-1]:
@@ -374,24 +372,21 @@ class TeamAnalystWindow(QScrollArea):
                #InterfaceUtils.pop_message("Team Building", message)
                print("Team new configuration canceled!")
             else: 
-                temp_teams, temp_analysts = {}, {}
-            
+                temp_teams = {}
                 for new_team in self.custom_teams.keys():
-                    temp_teams[new_team] = []
-                    temp_teams[new_team] = self.custom_teams[new_team]['analysts']
-                
-                    for new_analyst in temp_teams[new_team]:
-                        temp_analysts[new_team] = {}
-                        temp_analysts[new_team]["analysts"] = {}
-                        temp_analysts[new_team]["analysts"][new_analyst] = {}
-                        shift_index = int(self.analysts[new_analyst]["widget shift index"])
-                        temp_analysts[new_team]["analysts"][new_analyst]['shift'] = shift_index
-                        temp_analysts[new_team]["analysts"][new_analyst]["growth"] = float(self.analysts[new_analyst]["widget growth"].text())
-                        temp_analysts[new_team]["analysts"][new_analyst]["refusal_rate"] = float(self.analysts[new_analyst]["widget acceptance"].text())
-                        
+                    print("New team:", new_team)
+                    temp_teams[new_team] = {}
+                    temp_teams[new_team]["analysts"] = {}
+                    if self.custom_teams[new_team]['analysts']:
+                        for new_analyst in self.custom_teams[new_team]['analysts']:
+                            temp_teams[new_team]["analysts"][new_analyst] = {}
+                            shift_index = int(self.analysts[new_analyst]["widget shift index"])
+                            temp_teams[new_team]["analysts"][new_analyst]['shift'] = shift_index
+                            temp_teams[new_team]["analysts"][new_analyst]["growth"] = float(self.analysts[new_analyst]["widget growth"].text())
+                            temp_teams[new_team]["analysts"][new_analyst]["refusal_rate"] = float(self.analysts[new_analyst]["widget acceptance"].text())
 
-                Configurator.save_new_config_file(self.domain, "analysts_info", temp_analysts, filename)
-                self.parent_windows.generation_params["analysts_skills"] = temp_analysts
+                Configurator.save_new_config_file(self.domain, "analysts_info", temp_teams, filename)
+                self.parent_windows.generation_params["analysts_skills"] = temp_teams
                 print("Analysts assigned successfully!")
             self.close()
             
@@ -450,7 +445,10 @@ class TeamAnalystWindow(QScrollArea):
         """
         for team in self.parent_windows.generation_params["analysts_skills"].keys():
             self.standard_teams[team] = {}
-            self.standard_teams[team]['analysts'] = list(self.parent_windows.generation_params["analysts_skills"].keys())
+            if self.parent_windows.generation_params["analysts_skills"][team]["analysts"]:
+                self.standard_teams[team]['analysts'] = list(self.parent_windows.generation_params["analysts_skills"][team]["analysts"].keys())
+            else:
+                self.standard_teams[team]['analysts'] = {}
             
             team_layout = QHBoxLayout()
             
